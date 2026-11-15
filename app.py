@@ -11,7 +11,7 @@ RES = 0.25
 OV_START = "2018-04-01"
 ANO_BASE = 2003                       # 1º ano completo com Terra + Aqua
 DADOS_INI = pd.Timestamp("2000-11-01")
-PTS = "data/proc/points.parquet" if os.path.exists("data/proc/points.parquet") else "data/proc/points_lite.parquet"
+PTS = "data/proc/points.parquet" if os.path.exists("data/proc/points.parquet") else "data/proc/points/*.parquet"
 BR_FILE = "data/proc/brasil.geojson" if os.path.exists("data/proc/brasil.geojson") else "data/raw/brasil.geojson"
 
 # Paleta sequencial (mapa + calendário): YlOrRd (ColorBrewer) — segura para daltonismo e legível em cinza
