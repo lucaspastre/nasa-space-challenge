@@ -1,0 +1,12 @@
+streamlit>=1.37
+pandas
+numpy
+duckdb
+shapely>=2.0
+folium
+streamlit-folium
+branca
+jinja2
+plotly>=5.24
+requests
+pyshp

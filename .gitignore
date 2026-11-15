@@ -1,0 +1,8 @@
+.venv/
+__pycache__/
+.streamlit/secrets.toml
+data/proc/points_full.parquet
+data/proc/points_lite.parquet
+data/raw/*.csv
+data/alerts/
+data/proc/points.parquet
