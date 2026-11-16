@@ -1630,7 +1630,7 @@ elif poly_sel is None:
     st.markdown(f'<div class="legend"><span class="legend-note">{T["sel_hint"]}</span>{cinza}</div>',
                 unsafe_allow_html=True)
 
-poly = poly_sel if poly_sel is not None else box(-74, -34, -34, 6)
+poly = poly_sel if poly_sel is not None else (BR_SHAPE if BR_SHAPE is not None else box(-74, -34, -34, 6))
 
 dentro_cel = shapely.contains_xy(poly, cells.lon.values, cells.lat.values)
 for _, g in areas:                            # área menor que uma célula: usa a célula do centro dela
@@ -1798,12 +1798,23 @@ with t6:
                        use_container_width=True)
     if c3.button(T["dl_prep"], use_container_width=True):
         x0, y0, x1, y1 = poly.bounds
-        pts = duckdb.execute(f"""
-            SELECT latitude, longitude, date, frp, daynight, sensor
-            FROM '{PTS}'
-            WHERE longitude BETWEEN ? AND ? AND latitude BETWEEN ? AND ?
-              AND date >= ? AND date < ?""",
+        # mesma regra da série harmonizada: MODIS antes de abr/2018, VIIRS depois (sem contar o mesmo fogo
+        # duas vezes na sobreposição); harmonized_weight = 1 para VIIRS e k da célula para MODIS
+        con = duckdb.connect()
+        con.register("kt", kt)
+        pts = con.execute(f"""
+            SELECT p.latitude, p.longitude, p.date, p.frp, p.daynight, p.sensor,
+                   CASE WHEN p.sensor = 'viirs' THEN 1.0 ELSE COALESCE(kt.k, {K_DOM}) END AS harmonized_weight
+            FROM '{PTS}' p
+            LEFT JOIN kt ON kt.gx = CAST(floor(p.longitude / {RES}) AS INT)
+                        AND kt.gy = CAST(floor(p.latitude / {RES}) AS INT)
+            WHERE p.longitude BETWEEN ? AND ? AND p.latitude BETWEEN ? AND ?
+              AND p.date >= ? AND p.date < ?
+              AND ((p.sensor = 'viirs' AND p.date >= '{OV_START}')
+                OR (p.sensor = 'modis' AND p.date <  '{OV_START}'))
+            ORDER BY p.date""",
             [x0, x1, y0, y1, INI.strftime("%Y-%m-%d"), FIM_EXCL.strftime("%Y-%m-%d")]).df()
+        pts["harmonized_weight"] = pts.harmonized_weight.round(4)
         pts = pts[shapely.contains_xy(poly, pts.longitude.values, pts.latitude.values)]
         st.session_state.pts_csv = pts.to_csv(index=False).encode()
         st.session_state.pts_n = len(pts)
