@@ -1006,7 +1006,7 @@ with st.sidebar:
     with cfg:
         lang = st.radio("Language · Idioma", ["EN", "PT"], horizontal=True)
         T = TXT[lang]
-        tema = st.radio(T["tema"], ["light", "dark"], index=1, format_func=lambda k: T[k], horizontal=True)
+        tema = st.radio(T["tema"], ["light", "dark"], index=0, format_func=lambda k: T[k], horizontal=True)
     MESES = T["meses"]
     fmt_ts = lambda t: f"{MESES[t.month - 1]}/{t.year}"
     ss = st.session_state
