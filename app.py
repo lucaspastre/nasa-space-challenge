@@ -137,8 +137,8 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
 - Antes de abr/2018: *k* × MODIS. Depois: VIIRS NOAA-20.
 """,
     resize_hint="↔ Arraste a borda direita deste painel para redimensioná-lo.",
-    eyebrow="NASA Space Apps 2026 · Dados NASA FIRMS", titulo="Flame",
-    sub="Calendário de queimadas do Brasil · série harmonizada MODIS + VIIRS de focos de calor",
+    eyebrow="NASA Space Apps 2026 · Dados NASA FIRMS", titulo="Flama",
+    sub="Calendário de Queimadas · Série harmonizada MODIS + VIIRS de focos de calor · Brasil",
     dados_ate="Dados até", area_coords="Área: coordenadas", area_poly="Área: polígono desenhado",
     area_up="Área: arquivo enviado",                                           # [upload]
     area_br="Área: Brasil inteiro",
@@ -307,8 +307,8 @@ All colors were chosen to be distinguishable by people with color vision deficie
 - Before Apr 2018: *k* × MODIS. After: VIIRS NOAA-20.
 """,
     resize_hint="↔ Drag the right edge of this panel to resize it.",
-    eyebrow="NASA Space Apps 2026 · NASA FIRMS data", titulo="Flame",
-    sub="Brazil's burning activity calendar · harmonized MODIS + VIIRS active fire hotspot series",
+    eyebrow="NASA Space Apps 2026 · NASA FIRMS data", titulo="Flama",
+    sub="Burning Activity Calendar · Harmonized MODIS + VIIRS active fire hotspot series · Brazil",
     dados_ate="Data through", area_coords="Area: coordinates", area_poly="Area: drawn polygon",
     area_up="Area: uploaded file",                                             # [upload]
     area_br="Area: all of Brazil",
@@ -527,7 +527,7 @@ class JsSnippet(MacroElement):
         super().__init__()
         self._template = Template("{% macro script(this, kwargs) %}" + js + "{% endmacro %}")
 
-st.set_page_config(page_title="Flame · Burning Activity Calendar", page_icon="🔥",
+st.set_page_config(page_title="Flama", page_icon="🔥",
                    layout="wide", initial_sidebar_state="expanded")
 
 # ---------------- dados
@@ -748,7 +748,7 @@ def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
         x0, y0, x1, y1 = foco.bounds
         centro = dict(lat=(y0 + y1) / 2, lon=(x0 + x1) / 2)
         zoom = float(np.clip(np.log2(360 / max(x1 - x0, y1 - y0, 0.05)) - 1.3, 3, 13))
-    fig.update_layout(**{chave_mapa: dict(style="open-street-map",
+    fig.update_layout(**{chave_mapa: dict(style="carto-darkmatter" if ESCURO else "carto-positron",
                                           center=centro, zoom=zoom)},
                       height=540, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       uirevision=foco_wkt[:200] if not pais else "pais",
@@ -978,7 +978,7 @@ def remover_area(ref):
 # ---------------- barra lateral
 with st.sidebar:
     # ⚙ Configurações (idioma e tema)
-    cfg = st.popover(":material/settings:", help="Settings · Configurações")
+    cfg = st.popover(":material/settings:", help="Configurações · Settings")
     with cfg:
         lang = st.radio("Language · Idioma", ["EN", "PT"], horizontal=True)
         T = TXT[lang]
@@ -1298,17 +1298,10 @@ html, body, .stApp, p, li, label, input, textarea, button, h1, h2, h3, h4,
 .stButton button[kind="primary"] { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
 .stButton button[kind="primary"]:hover { filter: brightness(1.08); color: #FFFFFF; }
 .stButton button[kind="primary"]:disabled { background: var(--surface); border-color: var(--border); color: var(--muted); filter: none; }
-/* caixas, chaves e opções marcadas em verde (não depende do primaryColor do config.toml) */
-label[data-baseweb="checkbox"]:has(input:checked) > span,
-label[data-baseweb="checkbox"]:has(input[aria-checked="true"]) > span {
-    background-color: var(--accent) !important; border-color: var(--accent) !important; }
-/* chave (toggle): trilho verde quando ligada */
-label[data-baseweb="checkbox"]:has(input:checked) > div:first-child,
-label[data-baseweb="checkbox"]:has(input[aria-checked="true"]) > div:first-child {
-    background-color: var(--accent) !important; }
-/* opções (radio): círculo verde quando marcada */
-label[data-baseweb="radio"]:has(input:checked) > div:first-child {
-    background-color: var(--accent) !important; border-color: var(--accent) !important; }
+/* caixas, chaves e opções marcadas em verde (complementa o primaryColor do config.toml) */
+[data-testid="stCheckbox"] [data-baseweb="checkbox"] input:checked + div,
+[data-baseweb="checkbox"] [aria-checked="true"] { background-color: var(--accent) !important; border-color: var(--accent) !important; }
+[data-baseweb="radio"] input:checked + div { background-color: var(--accent) !important; border-color: var(--accent) !important; }
 [data-baseweb="tag"] { background: var(--accent_bg) !important; color: var(--accent) !important; }
 [data-baseweb="tag"] * { color: var(--accent) !important; }
 [data-testid="stExpander"] details { background: var(--surface); border: 1px solid var(--border);
@@ -1818,7 +1811,7 @@ with t6:
         c3.download_button(f"{T['dl_focos']} ({st.session_state.pts_n:,} {T['linhas']})",
                            st.session_state.pts_csv, "focos.csv", use_container_width=True)
     st.caption(T["dl_hint"])
-# ---------------- [tempo real] atualiza sozinho a cada intervalo de minutos
+# ---------------- [tempo real] atualiza sozinho a cada `intervalo` minutos (só esta parte da página)
 FIRMS_KEY = firms_key()
 with t7:
     if not FIRMS_KEY:
