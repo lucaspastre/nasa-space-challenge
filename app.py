@@ -9,39 +9,63 @@ from jinja2 import Template
 
 RES = 0.25
 OV_START = "2018-04-01"
-ANO_BASE = 2003                       # 1º ano completo com Terra + Aqua
+ANO_BASE = 2003  # primeiro ano completo com Terra e Aqua
 DADOS_INI = pd.Timestamp("2000-11-01")
 PTS = "data/proc/points.parquet" if os.path.exists("data/proc/points.parquet") else "data/proc/points/*.parquet"
 BR_FILE = "data/proc/brasil.geojson" if os.path.exists("data/proc/brasil.geojson") else "data/raw/brasil.geojson"
 
-# Paleta sequencial (mapa + calendário): YlOrRd (ColorBrewer) — segura para daltonismo e legível em cinza
+# Fonte do app inteiro. Para trocar, basta mudar estas duas linhas.
+FONTE = "Figtree"
+FONTE_URL = "Figtree:wght@400;500;600;700"
+
+# Paleta do mapa e do calendário (YlOrRd, do ColorBrewer): boa para daltônicos e legível em tons de cinza
 PAL_NOME = "YlOrRd"
 PAL = ["#fed976", "#feb24c", "#fd8d3c", "#f03b20", "#bd0026"]
 
-# Temas da interface
+# Cores dos temas claro e escuro
 TEMAS = {
-    "light": dict(bg="#F6F7F9", surface="#FFFFFF", border="#E3E6EA", text="#111827", text2="#374151",
-                  muted="#6B7280", input="#FFFFFF", hover="#F3F4F6", grid="#E5E7EB", accent="#0B6B3F", gold="#D4A21A", accent_bg="#E8F3EC",
+    "light": dict(bg="#F2F4F3", surface="#FFFFFF", surface2="#F7F9F8", side="#FBFCFB",
+                  border="#DCE2DF", border2="#C5CEC9", text="#0F1A15", text2="#33423B",
+                  muted="#5F6E67", input="#FFFFFF", hover="#EDF2EF", grid="#E4E9E6", gridline="rgba(15,26,21,.05)",
+                  accent="#0B6B3F", gold="#C99417", accent_bg="#E6F1EB", shadow="0 1px 2px rgba(15,26,21,.05), 0 4px 14px rgba(15,26,21,.05)",
                   mask="#9CA3AF", mask_op=0.55, harm="#000000", leaflet_bg="#E5E7EB",
                   bar="#C7CDD4", destaque="#0072B2",
-                  danger="#B42318", danger_bg="#FDECEA", success="#1E7F4F", success_bg="#E6F4EC"),
-    "dark":  dict(bg="#0F1419", surface="#171D24", border="#2A323C", text="#E5E7EB", text2="#CBD2DA",
-                  muted="#94A0AE", input="#1E252E", hover="#222A33", grid="#2A323C", accent="#4DB57F", gold="#E3B53C", accent_bg="#16281F",
+                  danger="#B42318", danger_bg="#FDECEA", success="#1E7F4F", success_bg="#E6F4EC",
+                  warn="#8A5A00", warn_bg="#FDF4DC", info="#1F4F3A", info_bg="#EAF3EE"),
+    "dark":  dict(bg="#090E0C", surface="#101714", surface2="#0D1311", side="#0C1210",
+                  border="#1E2925", border2="#2D3B35", text="#E7EEEA", text2="#B7C3BD",
+                  muted="#87968F", input="#131C18", hover="#17211D", grid="#1B2521", gridline="rgba(231,238,234,.035)",
+                  accent="#3FB37F", gold="#E0B23A", accent_bg="#11251B", shadow="0 1px 2px rgba(0,0,0,.4), 0 6px 20px rgba(0,0,0,.25)",
                   mask="#000000", mask_op=0.45, harm="#E5E7EB", leaflet_bg="#1B2026",
                   bar="#4B5563", destaque="#56B4E9",
-                  danger="#F07167", danger_bg="#2D1A1A", success="#4CC38A", success_bg="#15291F"),
+                  danger="#F07167", danger_bg="#2A1717", success="#4CC38A", success_bg="#12261B",
+                  warn="#E8C15A", warn_bg="#2A2312", info="#9FD9BC", info_bg="#11231A"),
 }
 
-# Camadas do mapa (sem chave de API)
+# Logo: chama dourada sobre um quadrado verde
+LOGO = ('<svg viewBox="0 0 32 32" width="100%" height="100%" aria-hidden="true">'
+        '<rect width="32" height="32" rx="8" style="fill:var(--accent)"/>'
+        '<path d="M16.4 5.5c1.6 4 6.1 6.4 6.1 11.6a6.5 6.5 0 0 1-13 0c0-2.7 1.1-4.6 2.5-6.1.2 1.9 1.1 3.1 2.3 3.6'
+        '-.5-3.6.6-6.6 2.1-9.1z" style="fill:var(--gold)"/>'
+        '<path d="M16 15.2c.9 1.8 2.6 2.9 2.6 5a2.6 2.6 0 0 1-5.2 0c0-1.3.6-2.2 1.3-2.9.1.8.5 1.3 1 1.5-.1-1.4.1-2.6.3-3.6z"'
+        ' style="fill:var(--accent);opacity:.55"/></svg>')
+
+def sec_head(idx, titulo, nota=""):
+    """Título de seção numerado (Visão geral, Mapa, Análises)."""
+    n = f'<span class="sh-note">{nota}</span>' if nota else ""
+    return (f'<div class="section-head"><span class="sh-idx">{idx}</span>'
+            f'<span class="sh-title">{titulo}</span><span class="sh-line"></span>{n}</div>')
+
+# Camadas do mapa (nenhuma precisa de chave de API)
 LIGHT_LABELS = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
 DARK_LABELS = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}"
 LABELS_ATTR = "Tiles &copy; Esri — Esri, HERE, Garmin, &copy; OpenStreetMap contributors"
 ESRI_IMG = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
 ESRI_ATTR = "Tiles &copy; Esri — Esri, Maxar, Earthstar Geographics"
 
-SA = dict(min_lat=-60, max_lat=15, min_lon=-95, max_lon=-25)   # América do Sul (com margem)
+SA = dict(min_lat=-60, max_lat=15, min_lon=-95, max_lon=-25)  # o mapa fica limitado à América do Sul
 
-# [estado] Unidades da Federação (código IBGE -> sigla, nome) e malha das UFs
+# Estados: código do IBGE -> (sigla, nome), e de onde baixar o contorno de cada um
 UF = {11: ("RO", "Rondônia"), 12: ("AC", "Acre"), 13: ("AM", "Amazonas"), 14: ("RR", "Roraima"),
       15: ("PA", "Pará"), 16: ("AP", "Amapá"), 17: ("TO", "Tocantins"), 21: ("MA", "Maranhão"),
       22: ("PI", "Piauí"), 23: ("CE", "Ceará"), 24: ("RN", "Rio Grande do Norte"), 25: ("PB", "Paraíba"),
@@ -55,31 +79,30 @@ UF_FILE = "data/raw/estados.geojson"
 UF_URL = "https://servicodados.ibge.gov.br/api/v3/malhas/paises/BR"
 UF_PARAMS = {"formato": "application/vnd.geo+json", "qualidade": "intermediaria", "intrarregiao": "UF"}
 
-# [tempo real] FIRMS NRT (API de área) e [alertas] histórico
+# API do FIRMS para os focos em tempo real, e arquivo onde o histórico de alertas fica salvo
 FIRMS_URL = "https://firms.modaps.eosdis.nasa.gov/api/area/csv/{key}/{src}/{bbox}/{dias}"
 NRT_SRC = {"VIIRS_NOAA20_NRT": "NOAA-20", "VIIRS_NOAA21_NRT": "NOAA-21", "VIIRS_SNPP_NRT": "S-NPP"}
 BBOX_BR = "-74,-34,-28,6"                     # oeste, sul, leste, norte (inclui as ilhas oceânicas)
 TZ_BR = "America/Sao_Paulo"
-INTERVALOS = [5, 10, 15, 30, 60]              # minutos
+INTERVALOS = [5, 10, 15, 30, 60]  # em minutos
 ALERT_FILE = "data/alerts/alertas.csv"
 HIST_COLS = ["alerta_id", "verificado_em", "area", "area_key", "id", "latitude", "longitude", "data_hora_utc",
              "satelite", "frp", "confianca", "daynight"]
 
-# ---------------- textos (PT / EN)
+# ---------------- textos (PT e EN)
 TXT = {
 "PT": dict(
     meses=["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"],
     config="Configurações", idioma="Idioma", tema="Tema", light="Claro", dark="Escuro",
     filtros="Filtros", area="Área de interesse",
-    draw="Desenhar no mapa", coords="Coordenadas", estado="Estados",           # [estado]
-    upload="Enviar arquivo", pais="País inteiro",                              # [upload] [país]
-    uf_lbl="Estados", uf_ph="Escolha um ou mais estados",                      # [estado]
+    draw="Desenhar no mapa", coords="Coordenadas", estado="Estados",
+    upload="Enviar arquivo", pais="País inteiro",
+    uf_lbl="Estados", uf_ph="Escolha um ou mais estados",
     uf_err="Não foi possível carregar os limites dos estados (IBGE). Salve um GeoJSON das UFs em "
            "data/raw/estados.geojson e recarregue a página.",
     pais_hint="Pinta a intensidade de focos em todo o Brasil e, na aba Tempo real, mostra todos os focos do "
               "país. Pode levar alguns segundos na primeira vez.",
     brasil="Brasil",
-    # [várias áreas]
     area_lbl="Área: {a}", area_n_lbl="{n} áreas selecionadas",
     areas_titulo="Suas áreas (clique no nome para editar)", rm_area="Remover esta área", limpar_areas="Remover todas as áreas",
     nome_draw="Desenho", nome_coords="Polígono", nome_upload="Arquivo", concluir="Concluir área",
@@ -87,12 +110,12 @@ TXT = {
     nome_area="Nome da área (opcional)", nome_lbl="Nome da área", fonte_off="Fonte desmarcada: áreas guardadas, mas fora da análise.",
     lat_min="Lat mín", lat_max="Lat máx", lon_min="Lon mín", lon_max="Lon máx",
     limpar="Limpar seleção",
-    rm_btn="Remover área selecionada",                                         # [remover área]
-    rm_tip="Clique na área para removê-la (Esc cancela)",                      # [remover área]
-    rm_vazio="Nenhuma área para remover",                                      # [remover área]
+    rm_btn="Remover área selecionada",
+    rm_tip="Clique na área para removê-la (Esc cancela)",
+    rm_vazio="Nenhuma área para remover",
     draw_hint="Desenhe polígonos ou retângulos com as ferramentas no canto superior esquerdo do mapa. "
               "Cada desenho vira uma área; dá para adicionar várias.",
-    # [upload] envio do limite da área por arquivo
+    # envio de arquivo com o limite da área
     up_lbl="Arquivo com o limite da área",
     up_hint="KML, KMZ, GeoJSON ou shapefile .zip (com .shp, .shx e .dbf), em graus de lat/lon "
             "(WGS84 ou SIRGAS 2000). Ex.: o perímetro do imóvel baixado do CAR/SICAR. "
@@ -137,10 +160,12 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
 - Antes de abr/2018: *k* × MODIS. Depois: VIIRS NOAA-20.
 """,
     resize_hint="↔ Arraste a borda direita deste painel para redimensioná-lo.",
+    sec_overview="Visão geral", sec_map="Mapa de intensidade", sec_analysis="Análises históricas",
+    sec_monitor="Monitoramento em tempo real",
     eyebrow="NASA Space Apps 2026 · Dados NASA FIRMS", titulo="Flama",
     sub="Calendário de Queimadas · Série harmonizada MODIS + VIIRS de focos de calor · Brasil",
     dados_ate="Dados até", area_coords="Área: coordenadas", area_poly="Área: polígono desenhado",
-    area_up="Área: arquivo enviado",                                           # [upload]
+    area_up="Área: arquivo enviado",
     area_br="Área: Brasil inteiro",
     l_sat="Satélite", l_fora="Fora da cobertura", l_limite="Limite do Brasil",
     l_focos="Focos de calor", l_sel="Área selecionada", l_rot="Rótulos",
@@ -152,14 +177,13 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
     sem_focos="Nenhum foco registrado nessa área.",
     kpi_total="Total de focos no período", kpi_vs="vs mediana", focos="focos",
     kpi_ano="Ano com mais focos", kpi_mes="Mês mais crítico (mediana)", kpi_cel="Células 0,25° selecionadas",
-    kpi_temp="Temporada típica (pico)",                                        # [temporada]
+    kpi_temp="Temporada típica (pico)",
     temp_help="Início: mês em que normalmente já se acumularam 10% dos focos do ano. Fim: mês em que se "
               "chega a 90%. Entre parênteses: o mês de pico.",
     unidade="Unidade: focos VIIRS-equivalentes (NOAA-20, 375 m).",
     nota_parcial="O mês atual ainda não terminou: o indicador compara os dias 1–{d} de {m} deste ano com a mediana do mesmo intervalo em {a0}–{a1}.",
     abas=["Calendário", "Anomalia", "Comparação anual", "Série temporal", "Validação", "Downloads",
-          "Tempo real", "Alertas"],                                            # [tempo real] [alertas]
-    # [tempo real]
+          "Tempo real", "Alertas"],
     rt_sem_chave="Para o monitoramento em tempo real, configure a chave da API do FIRMS (MAP_KEY) em "
                  "`.streamlit/secrets.toml` (`FIRMS_KEY = \"...\"`) ou na variável de ambiente `FIRMS_KEY`. "
                  "A chave é gratuita: firms.modaps.eosdis.nasa.gov/api/map_key",
@@ -179,7 +203,6 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
     rt_intervalo="Atualização do tempo real",
     rt_int_help="De quanto em quanto tempo o app consulta o FIRMS. O FIRMS recebe dados novos a cada passagem "
                 "de satélite, então intervalos menores que 10 min raramente trazem focos novos.",
-    # [alertas]
     al_titulo="Alertas de incêndio", al_on="Receber alertas",
     al_hint="Os alertas monitoram as áreas de interesse escolhidas em Filtros (cada área separadamente).",
     al_toast="{n} novo(s) foco(s) em {a}",
@@ -194,7 +217,7 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
                  frp="FRP máx. (MW)", ultima="Última detecção (UTC)"),
     al_dl="Focos dos alertas (CSV)", al_dl_res="Resumo dos alertas (CSV)",
     al_limpar="Limpar histórico", al_limpar_conf="Apaga todos os alertas salvos. Não dá para desfazer.",
-    # [info] explicações dos indicadores (ícone ⓘ)
+    # textos dos ícones ⓘ ao lado dos indicadores
     h_total="Soma dos focos de calor na área e no período escolhidos em Filtros, já harmonizados "
             "(VIIRS-equivalentes): antes de abr/2018 vêm do MODIS multiplicado pelo fator k; depois, do VIIRS NOAA-20.",
     h_vs="Focos do mês atual, do dia 1 até o último dia com dados, comparados com a mediana do mesmo intervalo "
@@ -227,7 +250,7 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
     ax_pct_mean="% vs média",
     titulo_comp="Focos em {j} de cada ano",
     rank="{a} está em {p}º lugar entre {n} anos ({j}).",
-    cap_comp="Barras: focos VIIRS-equivalentes no mesmo período de cada ano, de 2003 até hoje (não depende do filtro de período). Em destaque: {a}. Linha tracejada vermelho-alaranjada: mediana dos anos anteriores; linha pontilhada verde: média.",  # [linhas]
+    cap_comp="Barras: focos VIIRS-equivalentes no mesmo período de cada ano, de 2003 até hoje (não depende do filtro de período). Em destaque: {a}. Linha tracejada vermelho-alaranjada: mediana dos anos anteriores; linha pontilhada verde: média.",
     cap_cal="Paleta YlOrRd (ColorBrewer, acessível para daltônicos e legível em tons de cinza): cor mais escura = mais focos. Passe o mouse para ver o valor exato.",
     cap_anom="Escala RdBu (acessível para daltônicos): vermelho = acima da mediana do mesmo mês, azul = abaixo, branco = normal.",
     cap_anom_mean="Escala RdBu (acessível para daltônicos): vermelho = acima da média do mesmo mês, azul = abaixo, branco = normal. A média é mais sensível a anos extremos (ex.: 2007, 2010, 2024) que a mediana.",
@@ -241,15 +264,14 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
     meses=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
     config="Settings", idioma="Language", tema="Theme", light="Light", dark="Dark",
     filtros="Filters", area="Area of interest",
-    draw="Draw on map", coords="Coordinates", estado="States",                 # [estado]
-    upload="Upload file", pais="Whole country",                                # [upload] [país]
-    uf_lbl="States", uf_ph="Choose one or more states",                        # [estado]
+    draw="Draw on map", coords="Coordinates", estado="States",
+    upload="Upload file", pais="Whole country",
+    uf_lbl="States", uf_ph="Choose one or more states",
     uf_err="Could not load state boundaries (IBGE). Save a GeoJSON of the states to "
            "data/raw/estados.geojson and reload the page.",
     pais_hint="Colors hotspot intensity across all of Brazil and, in the Real time tab, shows every hotspot "
               "in the country. May take a few seconds the first time.",
     brasil="Brazil",
-    # [várias áreas]
     area_lbl="Area: {a}", area_n_lbl="{n} areas selected",
     areas_titulo="Your areas (click a name to edit it)", rm_area="Remove this area", limpar_areas="Remove all areas",
     nome_draw="Drawing", nome_coords="Polygon", nome_upload="File", concluir="Finish area",
@@ -257,12 +279,12 @@ Todas as cores foram escolhidas para serem distinguíveis por pessoas com dalton
     nome_area="Area name (optional)", nome_lbl="Area name", fonte_off="Source unchecked: areas kept, but left out of the analysis.",
     lat_min="Min lat", lat_max="Max lat", lon_min="Min lon", lon_max="Max lon",
     limpar="Clear selection",
-    rm_btn="Remove selected area",                                             # [remover área]
-    rm_tip="Click the area to remove it (Esc cancels)",                        # [remover área]
-    rm_vazio="No area to remove",                                              # [remover área]
+    rm_btn="Remove selected area",
+    rm_tip="Click the area to remove it (Esc cancels)",
+    rm_vazio="No area to remove",
     draw_hint="Draw polygons or rectangles using the tools in the top-left corner of the map. "
               "Each drawing becomes an area; you can add several.",
-    # [upload] area boundary from a file
+    # envio de arquivo com o limite da área
     up_lbl="Area boundary file",
     up_hint="KML, KMZ, GeoJSON or zipped shapefile (.zip with .shp, .shx and .dbf), in lat/lon degrees "
             "(WGS84 or SIRGAS 2000). E.g., the property perimeter downloaded from CAR/SICAR. "
@@ -307,10 +329,12 @@ All colors were chosen to be distinguishable by people with color vision deficie
 - Before Apr 2018: *k* × MODIS. After: VIIRS NOAA-20.
 """,
     resize_hint="↔ Drag the right edge of this panel to resize it.",
+    sec_overview="Overview", sec_map="Intensity map", sec_analysis="Historical analytics",
+    sec_monitor="Live monitoring",
     eyebrow="NASA Space Apps 2026 · NASA FIRMS data", titulo="Flama",
     sub="Burning Activity Calendar · Harmonized MODIS + VIIRS active fire hotspot series · Brazil",
     dados_ate="Data through", area_coords="Area: coordinates", area_poly="Area: drawn polygon",
-    area_up="Area: uploaded file",                                             # [upload]
+    area_up="Area: uploaded file",
     area_br="Area: all of Brazil",
     l_sat="Satellite", l_fora="Outside coverage", l_limite="Brazil boundary",
     l_focos="Fire hotspots", l_sel="Selected area", l_rot="Labels",
@@ -322,14 +346,13 @@ All colors were chosen to be distinguishable by people with color vision deficie
     sem_focos="No hotspots recorded in this area.",
     kpi_total="Total hotspots in period", kpi_vs="vs median", focos="hotspots",
     kpi_ano="Year with most hotspots", kpi_mes="Most critical month (median)", kpi_cel="Selected 0.25° cells",
-    kpi_temp="Typical fire season (peak)",                                     # [temporada]
+    kpi_temp="Typical fire season (peak)",
     temp_help="Start: month by which 10% of the year's hotspots have usually accumulated. End: month reaching "
               "90%. In parentheses: the peak month.",
     unidade="Unit: VIIRS-equivalent hotspots (NOAA-20, 375 m).",
     nota_parcial="The current month is not over yet: the indicator compares days 1–{d} of {m} this year with the median of the same window in {a0}–{a1}.",
     abas=["Calendar", "Anomaly", "Year comparison", "Time series", "Validation", "Downloads",
-          "Real time", "Alerts"],                                              # [tempo real] [alertas]
-    # [tempo real]
+          "Real time", "Alerts"],
     rt_sem_chave="For real-time monitoring, set the FIRMS API key (MAP_KEY) in `.streamlit/secrets.toml` "
                  "(`FIRMS_KEY = \"...\"`) or in the `FIRMS_KEY` environment variable. "
                  "The key is free: firms.modaps.eosdis.nasa.gov/api/map_key",
@@ -349,7 +372,6 @@ All colors were chosen to be distinguishable by people with color vision deficie
     rt_intervalo="Real-time refresh",
     rt_int_help="How often the app queries FIRMS. FIRMS receives new data with each satellite pass, so "
                 "intervals shorter than 10 min rarely bring new hotspots.",
-    # [alertas]
     al_titulo="Fire alerts", al_on="Receive alerts",
     al_hint="Alerts monitor the areas of interest chosen under Filters (each area separately).",
     al_toast="{n} new hotspot(s) in {a}",
@@ -364,7 +386,7 @@ All colors were chosen to be distinguishable by people with color vision deficie
                  frp="Max FRP (MW)", ultima="Latest detection (UTC)"),
     al_dl="Alert hotspots (CSV)", al_dl_res="Alert summary (CSV)",
     al_limpar="Clear history", al_limpar_conf="Deletes all saved alerts. This cannot be undone.",
-    # [info] indicator explanations (ⓘ icon)
+    # textos dos ícones ⓘ ao lado dos indicadores
     h_total="Sum of hotspots in the area and period chosen under Filters, already harmonized (VIIRS-equivalent): "
             "before Apr 2018 they come from MODIS multiplied by the k factor; after that, from VIIRS NOAA-20.",
     h_vs="Hotspots in the current month, from day 1 to the last day with data, compared with the median of the "
@@ -396,7 +418,7 @@ All colors were chosen to be distinguishable by people with color vision deficie
     ax_pct_mean="% vs mean",
     titulo_comp="Hotspots in {j} of each year",
     rank="{a} ranks #{p} out of {n} years ({j}).",
-    cap_comp="Bars: VIIRS-equivalent hotspots in the same window of each year, from 2003 to today (independent of the period filter). Highlighted: {a}. Dashed vermilion line: median of previous years; dotted green line: mean.",  # [linhas]
+    cap_comp="Bars: VIIRS-equivalent hotspots in the same window of each year, from 2003 to today (independent of the period filter). Highlighted: {a}. Dashed vermilion line: median of previous years; dotted green line: mean.",
     cap_cal="YlOrRd palette (ColorBrewer, colorblind-safe and readable in grayscale): darker color = more hotspots. Hover to see exact values.",
     cap_anom="RdBu scale (colorblind-safe): red = above the median for the same month, blue = below, white = normal.",
     cap_anom_mean="RdBu scale (colorblind-safe): red = above the mean for the same month, blue = below, white = normal. The mean is more sensitive to extreme years (e.g., 2007, 2010, 2024) than the median.",
@@ -408,7 +430,7 @@ All colors were chosen to be distinguishable by people with color vision deficie
 ),
 }
 
-# textos das ferramentas de desenho do mapa (Leaflet.draw) e do zoom
+# Textos das ferramentas de desenho e do zoom do mapa
 DRAW_TXT = {
     "PT": dict(
         actions={"title": "Cancelar o desenho", "text": "Cancelar"},
@@ -464,9 +486,9 @@ def draw_i18n_js(lang):
     }})();
     """
 
-# [remover área] botão ✕ na barra da esquerda: ativa o modo remover; clicar numa área a remove.
-# Ao remover, envia ao app um "clique" numa latitude impossível (−89,9 − índice × 0,001), que serve de sinal
-# e diz qual área foi clicada.
+# Botão ✕ do mapa: liga o modo de remoção, e clicar numa área a apaga.
+# Para o Python saber qual área foi clicada, o mapa simula um clique numa latitude que não existe
+# (−89,9 menos 0,001 × posição da área). O app reconhece esse valor e remove a área certa.
 RM_LAT = -89.9
 RM_PASSO = 0.001
 
@@ -552,7 +574,7 @@ def mascara():
 
 @st.cache_data(show_spinner=False)
 def estados():
-    """[estado] {sigla: wkt}. Lê data/raw/estados.geojson; se não existir, baixa a malha das UFs do IBGE e salva."""
+    """{sigla: wkt}. Lê data/raw/estados.geojson; se não existir, baixa a malha das UFs do IBGE e salva."""
     try:
         if os.path.exists(UF_FILE):
             with open(UF_FILE, encoding="utf-8") as f:
@@ -583,7 +605,7 @@ def estados():
     return out
 
 def firms_key():
-    """[tempo real] Chave da API do FIRMS: st.secrets["FIRMS_KEY"] ou variável de ambiente FIRMS_KEY."""
+    """Chave da API do FIRMS: st.secrets["FIRMS_KEY"] ou variável de ambiente FIRMS_KEY."""
     k = os.environ.get("FIRMS_KEY")
     try:
         k = st.secrets.get("FIRMS_KEY", k)
@@ -593,7 +615,7 @@ def firms_key():
 
 @st.cache_data(show_spinner=False, max_entries=4)
 def focos_nrt(key, marca):
-    """[tempo real] Focos VIIRS NRT das últimas 24 h no Brasil. `marca` muda a cada atualização e força nova consulta."""
+    """Focos VIIRS NRT das últimas 24 h no Brasil. `marca` muda a cada atualização e força nova consulta."""
     import requests
     dfs, erros = [], []
     for src, sat in NRT_SRC.items():
@@ -611,7 +633,7 @@ def focos_nrt(key, marca):
     if not dfs:
         return pd.DataFrame(columns=HIST_COLS[4:]), erros, agora
     df = pd.concat(dfs, ignore_index=True)
-    for c in ("latitude", "longitude", "frp", "acq_time"):                      # garante tipo numérico
+    for c in ("latitude", "longitude", "frp", "acq_time"):  # às vezes a API devolve números como texto
         df[c] = pd.to_numeric(df[c], errors="coerce")
     df = df.dropna(subset=["latitude", "longitude", "acq_time"])
     df = df[df.confidence.astype(str).str[0].isin(["n", "h"])]
@@ -633,7 +655,7 @@ def poly_prep(wkt):
     return p
 
 def carregar_hist():
-    """[alertas] Histórico salvo em disco (sobrevive a recarregar a página)."""
+    """Histórico salvo em disco (sobrevive a recarregar a página)."""
     if os.path.exists(ALERT_FILE):
         try:
             return pd.read_csv(ALERT_FILE, dtype={"alerta_id": str, "id": str, "area": str,
@@ -647,11 +669,11 @@ def salvar_hist(novos):
     novos.to_csv(ALERT_FILE, mode="a", header=not os.path.exists(ALERT_FILE), index=False)
 
 def chave_area(wkt):
-    """[alertas] Identificador estável de uma área (pela geometria), para não repetir alertas."""
+    """Identificador estável de uma área (pela geometria), para não repetir alertas."""
     return hashlib.md5(wkt.encode()).hexdigest()[:12]
 
 def checar_alertas(df, areas):
-    """[alertas] Registra focos ainda não vistos dentro de cada área. Retorna True se houve alerta novo."""
+    """Registra focos ainda não vistos dentro de cada área. Retorna True se houve alerta novo."""
     if df.empty or not areas:
         return False
     agora = pd.Timestamp.now(tz=TZ_BR)
@@ -688,7 +710,7 @@ def contorno(geom):
     return xs, ys
 
 def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
-    """[tempo real] Conteúdo da aba; roda como fragmento que se atualiza sozinho a cada `intervalo` minutos.
+    """Conteúdo da aba; roda como fragmento que se atualiza sozinho a cada `intervalo` minutos.
     `foco_wkt`: união das áreas de interesse (None = nenhuma); `pais`: modo País inteiro."""
     c1, c2 = st.columns([4, 1])
     forcar = c2.button(T["rt_agora"], use_container_width=True, key="rt_btn")
@@ -697,7 +719,7 @@ def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
     with st.spinner(T["rt_buscando"]):
         df, erros, quando = focos_nrt(key, ss.nrt_t)
     if checar_alertas(df, areas):
-        st.rerun(scope="app")                               # atualiza a aba Alertas e mostra os avisos
+        st.rerun(scope="app")  # recarrega a página para a aba Alertas e os avisos aparecerem
 
     hora = quando.tz_convert(TZ_BR)
     prox = pd.Timestamp(ss.nrt_t + intervalo * 60, unit="s", tz="UTC").tz_convert(TZ_BR)
@@ -720,8 +742,8 @@ def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
     if not pais:
         k[3].metric(T["rt_area"], f"{len(df):,}", help=T["h_rt_area"])
 
-    # mapa: contorno das áreas + focos coloridos pela idade
-    Sc = getattr(go, "Scattermap", None)                    # plotly >= 5.24 (MapLibre)
+    # mapa: contorno das áreas e focos coloridos pela idade
+    Sc = getattr(go, "Scattermap", None)  # o plotly 5.24+ usa MapLibre; as versões antigas, Mapbox
     chave_mapa = "map" if Sc is not None else "mapbox"
     Sc = Sc or go.Scattermapbox
     fig = go.Figure()
@@ -732,7 +754,7 @@ def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
     if len(d):
         d = d.assign(h=((quando - d.data_hora_utc).dt.total_seconds() / 3600).round(1),
                      hora_br=d.data_hora_utc.dt.tz_convert(TZ_BR).dt.strftime("%d/%m %H:%M"))
-        d = d.sort_values("h", ascending=False)             # mais recentes por cima
+        d = d.sort_values("h", ascending=False)  # os mais recentes ficam por cima
         escala = [[i / (len(PAL) - 1), c] for i, c in enumerate(PAL[::-1])]
         fig.add_trace(Sc(lon=d.longitude, lat=d.latitude, mode="markers", showlegend=False,
                          marker=dict(size=7, opacity=0.85, color=d.h, colorscale=escala, cmin=0, cmax=24,
@@ -748,11 +770,11 @@ def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
         x0, y0, x1, y1 = foco.bounds
         centro = dict(lat=(y0 + y1) / 2, lon=(x0 + x1) / 2)
         zoom = float(np.clip(np.log2(360 / max(x1 - x0, y1 - y0, 0.05)) - 1.3, 3, 13))
-        fig.update_layout(**{chave_mapa: dict(style="open-street-map",
+    fig.update_layout(**{chave_mapa: dict(style="carto-darkmatter" if ESCURO else "carto-positron",
                                           center=centro, zoom=zoom)},
                       height=540, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       uirevision=foco_wkt[:200] if not pais else "pais",
-                      font=dict(family="Inter, system-ui, sans-serif", color=P["text2"]),
+                      font=dict(family=f"{FONTE}, system-ui, sans-serif", color=P["text2"]),
                       hoverlabel=dict(bgcolor=P["surface"], bordercolor=P["border"], font=dict(color=P["text"])))
     st.plotly_chart(fig, use_container_width=True, config=PLOT_CFG, theme=None, key="rt_mapa")
     if d.empty:
@@ -788,7 +810,7 @@ def raster(wkt, d0, d1, n_meses):
     """Intensidade da área (log1p dos focos harmonizados/ano), sem normalizar: a normalização é feita em
     conjunto para todas as áreas selecionadas, e a cor é aplicada fora do cache."""
     poly = shapely.from_wkt(wkt)
-    shapely.prepare(poly)                                   # acelera o contains_xy (ex.: Brasil inteiro)
+    shapely.prepare(poly)  # deixa o contains_xy bem mais rápido em áreas grandes, como o Brasil inteiro
     x0, y0, x1, y1 = poly.bounds
     res = max(max(x1 - x0, y1 - y0) / 500, 0.004)          # ~400 m no mínimo (resolução do VIIRS)
     dm = np.radians(res)                                    # passo vertical em Mercator
@@ -885,7 +907,7 @@ def validar_pontos(pts):
         return None, "err_fora"
     return cand, None
 
-# [upload] leitura do limite da área a partir de um arquivo
+# Leitura do limite da área a partir de um arquivo
 @st.cache_data(show_spinner=False)
 def ler_area(dados, nome):
     """Lê polígonos de GeoJSON, KML, KMZ ou shapefile (.zip). Retorna (wkt da área ou None, chave do erro ou None)."""
@@ -946,7 +968,7 @@ def ler_area(dados, nome):
         return None, "err_fora"
     return area.wkt, None
 
-# [temporada] início (10%), fim (90%) e pico a partir das medianas mensais
+# Temporada típica: meses de início (10% dos focos do ano), fim (90%) e pico, a partir das medianas
 def temporada(med):
     """Recebe a mediana de cada mês (índice = nomes dos meses). Retorna (início, fim, pico) como índices 0–11."""
     v = med.reindex(MESES).fillna(0).values
@@ -961,7 +983,7 @@ def temporada(med):
     return ini, fim, int(np.argmax(v))
 
 def remover_area(ref):
-    """[várias áreas] Remove uma área. `ref` = ("user", id) para desenho/coordenadas/arquivo ou ("estado", sigla)."""
+    """Remove uma área. `ref` = ("user", id) para desenho/coordenadas/arquivo ou ("estado", sigla)."""
     ss = st.session_state
     fonte, ident = ref
     if fonte == "user":
@@ -969,20 +991,23 @@ def remover_area(ref):
         if item is None:
             return
         if item["fonte"] == "draw":
-            ss.draw_ign.append(item["feat"])           # o mapa ainda devolve o desenho antigo: ignorá-lo
+            ss.draw_ign.append(item["feat"])  # o mapa continua devolvendo o desenho apagado; guardamos para ignorá-lo
         ss.minhas_areas.remove(item)
     elif fonte == "estado":
         atual = [u for u in ss.get("uf_multi", []) if u != ident]
-        ss.uf_pend = atual                             # aplicado antes de o seletor ser desenhado
+        ss.uf_pend = atual  # o seletor só pode ser alterado antes de ser desenhado, então a mudança fica para a próxima execução
 
 # ---------------- barra lateral
 with st.sidebar:
-    # ⚙ Configurações (idioma e tema)
-    cfg = st.popover(":material/settings:", help="Configurações · Settings")
+    # ⚙ Configurações: idioma e tema
+    c_marca, c_cfg = st.columns([5, 2], vertical_alignment="center")
+    c_marca.markdown(f'<div class="side-logo"><span class="side-mark">{LOGO}</span>'
+                     f'<span>{TXT["EN"]["titulo"]}</span></div>', unsafe_allow_html=True)
+    cfg = c_cfg.popover(":material/settings:", help="Settings · Configurações")
     with cfg:
         lang = st.radio("Language · Idioma", ["EN", "PT"], horizontal=True)
         T = TXT[lang]
-        tema = st.radio(T["tema"], ["light", "dark"], format_func=lambda k: T[k], horizontal=True)
+        tema = st.radio(T["tema"], ["light", "dark"], index=1, format_func=lambda k: T[k], horizontal=True)
     MESES = T["meses"]
     fmt_ts = lambda t: f"{MESES[t.month - 1]}/{t.year}"
     ss = st.session_state
@@ -992,14 +1017,14 @@ with st.sidebar:
     st.markdown(f'<div class="sec">{T["area"]}</div>', unsafe_allow_html=True)
     for k, v in [("minhas_areas", []), ("draw_ign", []), ("coord_pts", []), ("up_key", 0), ("area_seq", 0)]:
         ss.setdefault(k, v)
-    areas, refs = [], []                               # [várias áreas] (nome, geometria) e referência de cada uma
+    areas, refs = [], []  # cada área vira (nome, geometria); refs guarda de onde ela veio
 
     def nova_area(fonte, nome, wkt, feat=None):
         ss.area_seq += 1
         ss.minhas_areas.append(dict(id=ss.area_seq, fonte=fonte, nome=nome or f"{T['nome_' + fonte]} {ss.area_seq}",
                                     wkt=wkt, feat=feat))
 
-    pais = st.toggle(T["pais"], key="modo_pais")                               # [país] exclusivo
+    pais = st.toggle(T["pais"], key="modo_pais")  # quando ligado, substitui todas as outras fontes
     usa = {}
     if pais:
         if BR_SHAPE is not None:
@@ -1007,7 +1032,7 @@ with st.sidebar:
         st.caption(T["pais_hint"])
     else:
         st.caption(T["fontes_hint"])
-        for k in ("draw", "coords", "upload", "estado"):                       # fontes combináveis
+        for k in ("draw", "coords", "upload", "estado"):  # estas fontes podem ser combinadas
             usa[k] = st.checkbox(T[k], value=(k == "draw"), key=f"usa_{k}")
 
             if not usa[k]:
@@ -1063,13 +1088,13 @@ with st.sidebar:
                         ss.coord_pts = []
                         st.rerun()
 
-                elif k == "upload":                                            # [upload] vários arquivos
+                elif k == "upload":  # aceita vários arquivos de uma vez
                     for e in ss.pop("up_erros", []):
                         st.error(e, icon=":material/error:")
                     arqs = st.file_uploader(T["up_lbl"], type=["kml", "kmz", "geojson", "json", "zip"],
                                             accept_multiple_files=True, key=f"up_{ss.up_key}")
                     st.caption(T["up_hint"])
-                    if arqs:                                   # cada arquivo vira uma área; o campo é esvaziado
+                    if arqs:  # cada arquivo vira uma área, e o campo é esvaziado em seguida
                         erros = []
                         for arq in arqs:
                             wkt_up, erro_up = ler_area(arq.getvalue(), arq.name.lower())
@@ -1081,7 +1106,7 @@ with st.sidebar:
                         ss.up_key += 1
                         st.rerun()
 
-                else:                                                          # [estado] vários estados
+                else:  # estados (dá para escolher vários)
                     with st.spinner():
                         ufs = estados()
                     if not ufs:
@@ -1095,7 +1120,7 @@ with st.sidebar:
                         areas += [(UF_NOME[s], shapely.from_wkt(ufs[s])) for s in ufs_sel]
                         refs += [("estado", s) for s in ufs_sel]
 
-        # [várias áreas] suas áreas (desenho, coordenadas, arquivo): nome editável + ✕
+        # Lista das áreas criadas (desenho, coordenadas e arquivo), com nome editável e ✕ para remover
         ICONE = {"draw": ":material/draw:", "coords": ":material/location_on:", "upload": ":material/upload_file:"}
         minhas = [x for x in ss.minhas_areas if usa.get(x["fonte"])]
         if minhas:
@@ -1119,9 +1144,9 @@ with st.sidebar:
         if any(x["fonte"] in usa and not usa[x["fonte"]] for x in ss.minhas_areas):
             st.caption(T["fonte_off"])
 
-    poly_sel = shapely.union_all([g for _, g in areas]) if areas else None    # união, para as análises
+    poly_sel = shapely.union_all([g for _, g in areas]) if areas else None  # as análises usam a união de todas as áreas
 
-    # [tempo real] [alertas] opções dentro de ⚙ Configurações
+    # Tempo real e alertas, dentro de ⚙ Configurações
     with cfg:
         st.divider()
         intervalo = st.selectbox(T["rt_intervalo"], INTERVALOS, index=INTERVALOS.index(15),
@@ -1130,7 +1155,7 @@ with st.sidebar:
         alertas_on = st.toggle(T["al_on"], key="al_on")
         st.caption(T["al_hint"])
 
-    # período: De (mês + ano) / Até (mês + ano) — "Até" só oferece datas a partir de "De"
+    # período: o "Até" só oferece datas a partir do "De"
     st.markdown(f'<div class="sec">{T["periodo"]}</div>', unsafe_allow_html=True)
     ANO0, ANO1 = DADOS_INI.year, ULT_MES.year
 
@@ -1185,7 +1210,7 @@ with st.sidebar:
 
     st.markdown(f'<div class="resize-hint">{T["resize_hint"]}</div>', unsafe_allow_html=True)
 
-# [alertas] estado da sessão: histórico, focos já vistos e avisos pendentes
+# Alertas: histórico salvo, focos já vistos e avisos que ainda vão aparecer
 if "hist" not in ss:
     ss.hist = carregar_hist()
     ss.vistos = set(zip(ss.hist.area.astype(str), ss.hist.id.astype(str)))
@@ -1200,43 +1225,116 @@ N_MESES = (FIM.year - INI.year) * 12 + (FIM.month - INI.month) + 1
 P = TEMAS[tema]
 ESCURO = tema == "dark"
 CORES = {T["s_modis"]: "#E69F00", T["s_viirs"]: "#0072B2", T["s_harm"]: P["harm"],
-         T["s_real"]: "#0072B2", T["s_prev"]: "#D55E00"}                       # Okabe-Ito
+         T["s_real"]: "#0072B2", T["s_prev"]: "#D55E00"}  # cores Okabe-Ito
 
-# ---------------- estilo da página (variáveis do tema + regras)
+# ---------------- estilo da página
+st.markdown(f"<style>@import url('https://fonts.googleapis.com/css2?family={FONTE_URL}&display=swap');"
+            f":root {{ --font: '{FONTE}', system-ui, -apple-system, sans-serif; }}</style>", unsafe_allow_html=True)
 st.markdown(f"<style>:root {{ {' '.join(f'--{k}: {v};' for k, v in P.items() if isinstance(v, str))} }}</style>",
             unsafe_allow_html=True)
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
+/* ============ base ============ */
 html, body, .stApp, p, li, label, input, textarea, button, h1, h2, h3, h4,
 [data-testid="stMarkdownContainer"], [data-testid="stMetricValue"],
 [data-testid="stMetricLabel"], [data-testid="stMetricDelta"], [data-testid="stCaptionContainer"] {
-    font-family: 'Inter', system-ui, -apple-system, sans-serif !important;
-}
-#MainMenu, footer { visibility: hidden; }
-.stApp { background: var(--bg); }
+    font-family: var(--font) !important; }
+:root { --mono: var(--font); }
+#MainMenu, footer, [data-testid="stAppDeployButton"], [data-testid="stDecoration"] { display: none !important; }
+.stApp { background: var(--bg); color: var(--text); }
 [data-testid="stHeader"] { background: transparent; }
-.block-container { padding-top: 1.4rem; padding-bottom: 2rem; max-width: 100%; }
-
+.block-container, [data-testid="stMainBlockContainer"] { padding-top: 1.6rem; padding-bottom: 3rem; max-width: 100%; }
 [data-testid="stMarkdownContainer"] p, [data-testid="stMarkdownContainer"] li,
 [data-testid="stWidgetLabel"] p, .stApp label { color: var(--text2); }
 [data-testid="stMarkdownContainer"] strong { color: var(--text); }
-[data-testid="stCaptionContainer"] p { color: var(--muted) !important; font-size: .78rem; }
+[data-testid="stMarkdownContainer"] code { background: var(--hover); color: var(--text); border-radius: 4px;
+                                           font-family: var(--mono); font-size: .8em; padding: 1px 5px; }
+[data-testid="stCaptionContainer"] p { color: var(--muted) !important; font-size: .78rem; line-height: 1.5; }
 [data-testid="stMetricDelta"] p { color: inherit !important; }
+hr { border-color: var(--border) !important; }
 
-[data-testid="stSidebar"] { background: var(--surface); border-right: 1px solid var(--border); }
-[data-testid="stSidebar"] .block-container { padding-top: 1.2rem; }
+/* ============ barra lateral ============ */
+[data-testid="stSidebar"] { background: var(--side); border-right: 1px solid var(--border); }
+[data-testid="stSidebar"] .block-container, [data-testid="stSidebarUserContent"] { padding-top: .6rem; }
+[data-testid="stSidebarUserContent"] { counter-reset: sec; }
 [data-testid="stSidebarCollapseButton"] button, [data-testid="stExpandSidebarButton"] { color: var(--muted); }
 [data-testid="stSidebar"] [data-testid="stAlert"] p { font-size: .8rem; }
+.side-logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 1.05rem;
+             letter-spacing: -.01em; color: var(--text); }
+.side-mark { width: 26px; height: 26px; display: inline-flex; }
+.side-brand { font-size: .7rem; font-family: var(--mono); letter-spacing: .14em; text-transform: uppercase;
+              color: var(--muted); font-weight: 500; margin: 18px 0 2px; padding-top: 14px; border-top: 1px solid var(--border); }
+/* títulos da barra lateral numerados sozinhos (01, 02, 03) */
+.sec { counter-increment: sec; display: flex; align-items: center; gap: 8px; font-size: .74rem; letter-spacing: .06em;
+       text-transform: uppercase; color: var(--text); font-weight: 600; margin: 22px 0 8px; }
+.sec::before { content: counter(sec, decimal-leading-zero); font-family: var(--mono); font-size: .66rem; font-weight: 500;
+               color: var(--accent); background: var(--accent_bg); border-radius: 4px; padding: 2px 5px; letter-spacing: 0; }
+.sec::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+.sec-sub { font-size: .76rem; color: var(--text2); font-weight: 500; margin: 6px 0 2px; }
+/* caixas com borda acompanham o tema */
+[data-testid="stVerticalBlockBorderWrapper"], [data-testid="stVerticalBlock"] { border-color: var(--border) !important; }
+[data-testid="stSidebar"] [data-testid="stLayoutWrapper"] > [data-testid="stVerticalBlock"] { border-radius: 10px !important; }
 
-/* botão de configurações (engrenagem) e painel */
-[data-testid="stPopover"] button { background: var(--surface); color: var(--text2); border: 1px solid var(--border);
-                                   border-radius: 6px; box-shadow: none; padding: 4px 10px; }
-[data-testid="stPopover"] button:hover { border-color: var(--accent); color: var(--accent); }
-[data-testid="stPopoverBody"] { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+/* ============ cabeçalho ============ */
+.app-header { position: relative; display: flex; justify-content: space-between; align-items: flex-end; gap: 20px;
+              flex-wrap: wrap; padding: 22px 24px 20px; margin-bottom: 8px; border: 1px solid var(--border);
+              border-radius: 14px; overflow: hidden; box-shadow: var(--shadow);
+              background:
+                linear-gradient(90deg, var(--surface) 35%, transparent 100%),
+                linear-gradient(var(--gridline) 1px, transparent 1px) 0 0 / 22px 22px,
+                linear-gradient(90deg, var(--gridline) 1px, transparent 1px) 0 0 / 22px 22px,
+                var(--surface); }
+/* faixa verde e ouro na base do cabeçalho */
+.app-header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+                     background: linear-gradient(90deg, var(--accent) 0 72%, var(--gold) 72% 100%); }
+.brand { display: flex; align-items: center; gap: 16px; min-width: 0; }
+.brand-mark { width: 52px; height: 52px; flex: 0 0 52px; filter: drop-shadow(0 4px 10px rgba(11,107,63,.25)); }
+.eyebrow { font-family: var(--mono); font-size: .68rem; letter-spacing: .12em; text-transform: uppercase;
+           color: var(--accent) !important; font-weight: 500; }
+.app-header h1 { font-size: 1.9rem; font-weight: 700; letter-spacing: -0.025em; color: var(--text);
+                 margin: 2px 0 2px; padding: 0; line-height: 1.1; }
+.sub { font-size: .9rem; color: var(--text2); margin: 0; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.chip { font-size: .74rem; color: var(--text2); background: var(--surface2); border: 1px solid var(--border);
+        border-radius: 6px; padding: 5px 10px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.chip b { font-family: var(--mono); font-weight: 500; color: var(--text); font-size: .72rem; }
+.chip-live i { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); display: inline-block;
+               box-shadow: 0 0 0 0 var(--accent); animation: pulso 2.4s infinite; }
+@keyframes pulso { 0% { box-shadow: 0 0 0 0 rgba(63,179,127,.55); } 70% { box-shadow: 0 0 0 7px rgba(63,179,127,0); }
+                   100% { box-shadow: 0 0 0 0 rgba(63,179,127,0); } }
 
-/* ícone de ajuda: "i" em vez de "?" — só nos títulos dos indicadores e rótulos de campos (botões não) */
+/* títulos de seção da área principal */
+.section-head { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
+.sh-idx { font-family: var(--mono); font-size: .68rem; color: var(--accent); background: var(--accent_bg);
+          border-radius: 4px; padding: 2px 6px; }
+.sh-title { font-size: .8rem; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text); }
+.sh-line { flex: 1; height: 1px; background: var(--border); }
+.sh-note { font-size: .74rem; color: var(--muted); }
+
+/* ============ indicadores ============ */
+[data-testid="stMetric"] { position: relative; background: var(--surface); border: 1px solid var(--border);
+                           border-radius: 12px; padding: 14px 16px 14px 18px; height: 100%; box-shadow: var(--shadow);
+                           transition: border-color .15s ease, transform .15s ease; overflow: hidden; }
+[data-testid="stMetric"]::before { content: ""; position: absolute; left: 0; top: 14px; bottom: 14px; width: 3px;
+                                   border-radius: 0 3px 3px 0; background: var(--accent); opacity: .85; }
+[data-testid="stMetric"]:hover { border-color: var(--border2); transform: translateY(-1px); }
+/* o indicador do mês atual ganha um leve destaque */
+[data-testid="stMetric"]:has([data-testid="stMetricDelta"]) { background: linear-gradient(180deg, var(--accent_bg), var(--surface) 70%); }
+[data-testid="stMetricLabel"] p { font-size: .76rem !important; color: var(--muted) !important; font-weight: 500;
+                                  white-space: normal !important; overflow: visible !important; text-overflow: clip !important; }
+[data-testid="stMetricLabel"], [data-testid="stMetricLabel"] div { overflow: visible !important; white-space: normal !important; }
+[data-testid="stMetricValue"], [data-testid="stMetricValue"] * { font-size: 1.45rem; font-weight: 650; color: var(--text) !important;
+                                  letter-spacing: -.015em; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; }
+/* selo de variação em formato de pílula; a cor vem do bloco dos indicadores */
+[data-testid="stMetricDelta"] { border-radius: 999px; padding: 1px 8px; width: fit-content; font-family: var(--mono) !important; }
+[data-testid="stMetricDelta"] * { font-family: var(--mono) !important; font-size: .72rem !important; }
+/* o ícone padrão aparecia como um quadrado; a seta já vai no texto */
+[data-testid="stMetricDelta"] svg,
+[data-testid="stMetricDelta"] [data-testid="stIconMaterial"],
+[data-testid="stMetricDelta"] [data-testid^="stMetricDeltaIcon"] { display: none !important; }
+
+/* ícone de ajuda com "i" em vez de "?", só em títulos de indicadores e rótulos de campos */
 [data-testid="stMetricLabel"] [data-testid="stTooltipHoverTarget"] svg,
 [data-testid="stWidgetLabel"] [data-testid="stTooltipHoverTarget"] svg,
 [data-testid="stMetricLabel"] [data-testid="stTooltipIcon"] svg,
@@ -1244,172 +1342,154 @@ html, body, .stApp, p, li, label, input, textarea, button, h1, h2, h3, h4,
 [data-testid="stMetricLabel"] [data-testid="stTooltipHoverTarget"]::before,
 [data-testid="stWidgetLabel"] [data-testid="stTooltipHoverTarget"]::before {
     content: "i"; display: inline-flex; align-items: center; justify-content: center;
-    width: 15px; height: 15px; border-radius: 50%; border: 1.3px solid var(--muted); color: var(--muted);
-    font: italic 600 10px/1 Georgia, 'Times New Roman', serif; cursor: help; margin-left: 4px; }
+    width: 14px; height: 14px; border-radius: 50%; border: 1.2px solid var(--muted); color: var(--muted);
+    font: italic 600 9.5px/1 Georgia, 'Times New Roman', serif; cursor: help; margin-left: 4px; }
 [data-testid="stMetricLabel"] [data-testid="stTooltipHoverTarget"]:hover::before,
-[data-testid="stWidgetLabel"] [data-testid="stTooltipHoverTarget"]:hover::before {
-    border-color: var(--accent); color: var(--accent); }
-[data-baseweb="tooltip"] { max-width: 320px !important; }
+[data-testid="stWidgetLabel"] [data-testid="stTooltipHoverTarget"]:hover::before { border-color: var(--accent); color: var(--accent); }
 
-/* balões de dica: seguem o tema */
+/* balões de dica e menus suspensos acompanham o tema */
 [data-baseweb="tooltip"], [data-testid="stTooltipContent"] {
-    background: var(--surface) !important; border: 1px solid var(--border) !important;
-    border-radius: 6px !important; box-shadow: 0 2px 8px rgba(0,0,0,.08) !important; }
-[data-baseweb="tooltip"] *, [data-testid="stTooltipContent"] * {
-    background: transparent !important; color: var(--text) !important; }
-[data-baseweb="tooltip"] p, [data-testid="stTooltipContent"] p { font-size: .78rem; }
+    background: var(--surface) !important; border: 1px solid var(--border) !important; max-width: 320px !important;
+    border-radius: 8px !important; box-shadow: var(--shadow) !important; }
+[data-baseweb="tooltip"] *, [data-testid="stTooltipContent"] * { background: transparent !important; color: var(--text) !important; }
+[data-baseweb="tooltip"] p, [data-testid="stTooltipContent"] p { font-size: .78rem; line-height: 1.5; }
+[role="listbox"], [data-baseweb="popover"] ul, [data-baseweb="menu"] {
+    background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; }
+[role="listbox"] [role="option"], [data-baseweb="popover"] li { color: var(--text) !important; }
+[role="listbox"] [role="option"]:hover, [role="listbox"] [role="option"][data-focused] { background: var(--hover) !important; }
+[data-testid="stPopoverBody"], [role="dialog"] { background: var(--surface) !important; border: 1px solid var(--border) !important;
+                                                 border-radius: 10px !important; box-shadow: var(--shadow) !important; }
 
+/* ============ campos ============ */
 [data-baseweb="input"], [data-baseweb="base-input"], [data-baseweb="select"] > div,
-[data-testid="stNumberInput"] input { background: var(--input) !important; color: var(--text) !important;
-                                       border-color: var(--border) !important; }
-[data-testid="stNumberInput"] button { background: var(--input); color: var(--text2); }
-
-/* campos numéricos (lat/lon) e de texto (nomes): uma única borda fina, sem a borda grossa interna */
-[data-testid="stTextInputRootElement"] {
-    border: 1px solid var(--border) !important; border-radius: 6px !important;
-    background: var(--input) !important; box-shadow: none !important; overflow: hidden; }
-[data-testid="stTextInputRootElement"]:focus-within { border-color: var(--accent) !important; }
-[data-testid="stTextInputRootElement"] [data-baseweb="input"],
-[data-testid="stTextInputRootElement"] [data-baseweb="base-input"],
-[data-testid="stTextInput"] input {
-    border: none !important; border-radius: 0 !important; box-shadow: none !important; outline: none !important; }
-/* cor do texto digitado e do texto de exemplo seguem o tema (também com o campo desabilitado) */
+[data-testid="stSelectbox"] [role="group"], [data-testid="stMultiSelect"] [role="group"],
+[data-testid="stTextInputRootElement"], [data-testid="stNumberInputContainer"] {
+    background: var(--input) !important; color: var(--text) !important; border: 1px solid var(--border) !important;
+    border-radius: 8px !important; box-shadow: none !important; }
+[data-testid="stSelectbox"] [role="group"]:focus-within, [data-testid="stMultiSelect"] [role="group"]:focus-within,
+[data-testid="stTextInputRootElement"]:focus-within, [data-testid="stNumberInputContainer"]:focus-within {
+    border-color: var(--accent) !important; box-shadow: 0 0 0 3px var(--accent_bg) !important; }
+[data-testid="stTextInputRootElement"], [data-testid="stNumberInputContainer"] { overflow: hidden; }
+[data-testid="stTextInputRootElement"] [data-baseweb="input"], [data-testid="stTextInputRootElement"] [data-baseweb="base-input"],
+[data-testid="stNumberInputContainer"] [data-baseweb="input"], [data-testid="stNumberInputContainer"] [data-baseweb="base-input"],
 [data-testid="stTextInput"] input, [data-testid="stNumberInput"] input {
-    color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; }
-[data-testid="stTextInput"] input::placeholder, [data-testid="stNumberInput"] input::placeholder {
-    color: var(--muted) !important; -webkit-text-fill-color: var(--muted) !important; opacity: 1 !important; }
+    border: none !important; border-radius: 0 !important; box-shadow: none !important; outline: none !important; background: transparent !important; }
+/* cor do texto dos campos, inclusive nos painéis flutuantes como o ⚙ Settings */
+input, textarea { color: var(--text) !important; -webkit-text-fill-color: var(--text) !important; opacity: 1 !important; }
+input::placeholder, textarea::placeholder { color: var(--muted) !important; -webkit-text-fill-color: var(--muted) !important; opacity: 1 !important; }
+[data-testid="stNumberInput"] input { font-family: var(--mono) !important; font-size: .85rem !important; }
 [data-testid="stTextInput"] input:disabled { opacity: .6; }
-[data-testid="stNumberInputContainer"] {
-    border: 1px solid var(--border) !important; border-radius: 6px !important;
-    background: var(--input) !important; box-shadow: none !important; overflow: hidden; }
-[data-testid="stNumberInputContainer"]:focus-within { border-color: var(--accent) !important; }
-[data-testid="stNumberInputContainer"] [data-baseweb="input"],
-[data-testid="stNumberInputContainer"] [data-baseweb="base-input"],
-[data-testid="stNumberInput"] input {
-    border: none !important; border-radius: 0 !important; box-shadow: none !important; outline: none !important; }
-[data-testid="stNumberInput"] button { border: none !important; box-shadow: none !important; }
+[data-testid="stSelectbox"] button, [data-testid="stMultiSelect"] button { color: var(--muted) !important; }
+[data-testid="stNumberInput"] button { background: transparent !important; color: var(--text2) !important; border: none !important; box-shadow: none !important; }
 [data-testid="stNumberInput"] button:hover { background: var(--hover) !important; color: var(--accent) !important; }
-[data-baseweb="popover"] ul, [data-baseweb="menu"] { background: var(--surface) !important; }
-[data-baseweb="popover"] li { color: var(--text) !important; }
-
-.stButton button, .stDownloadButton button { background: var(--surface); color: var(--text);
-    border: 1px solid var(--border); border-radius: 6px; box-shadow: none; font-weight: 500; }
-.stButton button:hover, .stDownloadButton button:hover { border-color: var(--accent); color: var(--accent); }
-.stButton button[kind="primary"] { background: var(--accent); border-color: var(--accent); color: #FFFFFF; }
-.stButton button[kind="primary"]:hover { filter: brightness(1.08); color: #FFFFFF; }
-.stButton button[kind="primary"]:disabled { background: var(--surface); border-color: var(--border); color: var(--muted); filter: none; }
-/* caixas, chaves e opções marcadas em verde (complementa o primaryColor do config.toml) */
-[data-testid="stCheckbox"] [data-baseweb="checkbox"] input:checked + div,
-[data-baseweb="checkbox"] [aria-checked="true"] { background-color: var(--accent) !important; border-color: var(--accent) !important; }
-[data-baseweb="radio"] input:checked + div { background-color: var(--accent) !important; border-color: var(--accent) !important; }
-[data-baseweb="tag"] { background: var(--accent_bg) !important; color: var(--accent) !important; }
+[data-baseweb="tag"] { background: var(--accent_bg) !important; color: var(--accent) !important; border-radius: 6px !important; }
 [data-baseweb="tag"] * { color: var(--accent) !important; }
-[data-testid="stExpander"] details { background: var(--surface); border: 1px solid var(--border);
-                                     border-radius: 8px; box-shadow: none; }
-[data-testid="stExpander"] summary p { color: var(--text) !important; font-weight: 500; }
-[data-testid="stExpander"] summary svg { color: var(--muted); }
+/* caixas e chaves desmarcadas acompanham o tema; marcadas ficam no vermelho padrão */
+[data-testid="stCheckbox"] label:not(:has(input:checked)):not(:has(input[role="switch"])) > div:not([data-testid]),
+label[data-baseweb="checkbox"]:not(:has(input:checked)) > span {
+    background-color: var(--input) !important; border: 1px solid var(--border2) !important; }
+[data-testid="stCheckbox"] label:has(input[role="switch"]):not(:has(input:checked)) > div:not([data-testid]) {
+    background-color: var(--border2) !important; }
 
-/* formulário e lista de pontos das coordenadas */
-[data-testid="stSidebar"] [data-testid="stForm"] { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
-[data-testid="stFormSubmitButton"] button { background: var(--surface); color: var(--text);
-    border: 1px solid var(--border); border-radius: 6px; box-shadow: none; font-weight: 500; }
-[data-testid="stFormSubmitButton"] button:hover { border-color: var(--accent); color: var(--accent); }
-.pt-item { font-size: .8rem; color: var(--text2); padding-top: 8px; font-feature-settings: "tnum"; }
-.pt-item b { color: var(--text); }
+/* ============ botões ============ */
+.stButton button, .stDownloadButton button, [data-testid="stFormSubmitButton"] button, [data-testid="stPopoverButton"],
+[data-testid="stPopover"] button {
+    background: var(--surface) !important; color: var(--text) !important; border: 1px solid var(--border) !important;
+    border-radius: 8px !important; box-shadow: none !important; font-weight: 500; transition: all .15s ease; }
+.stButton button:hover, .stDownloadButton button:hover, [data-testid="stFormSubmitButton"] button:hover,
+[data-testid="stPopoverButton"]:hover, [data-testid="stPopover"] button:hover {
+    border-color: var(--accent) !important; color: var(--accent) !important; background: var(--accent_bg) !important; }
+.stButton button[kind="primary"] { background: var(--accent) !important; border-color: var(--accent) !important; color: #FFFFFF !important; }
+.stButton button[kind="primary"] * { color: #FFFFFF !important; }
+.stButton button[kind="primary"]:hover { filter: brightness(1.08); }
+.stButton button[kind="primary"]:disabled { background: var(--surface) !important; border-color: var(--border) !important; filter: none; }
+.stButton button[kind="primary"]:disabled * { color: var(--muted) !important; }
+/* na barra estreita, o texto dos botões quebra linha em vez de ser cortado */
+.stButton button *, .stDownloadButton button *, [data-testid="stFormSubmitButton"] button * {
+    white-space: normal !important; overflow: visible !important; text-overflow: clip !important; line-height: 1.25; }
+.stDownloadButton button::before { content: "↓"; font-family: var(--mono); margin-right: 6px; color: var(--accent); }
 
-/* [upload] caixa de envio e arquivo enviado: seguem o tema (nada de fundo preto) */
+/* ============ blocos ============ */
+[data-testid="stExpander"] details { background: var(--surface); border: 1px solid var(--border) !important;
+                                     border-radius: 10px !important; box-shadow: none; }
+[data-testid="stExpander"] summary p { color: var(--text) !important; font-weight: 500; font-size: .86rem; }
+[data-testid="stExpander"] summary svg, [data-testid="stExpander"] summary [data-testid="stIconMaterial"] { color: var(--muted); }
+[data-testid="stSidebar"] [data-testid="stForm"] { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+.pt-item { font-size: .78rem; color: var(--text2); padding-top: 8px; font-family: var(--mono); }
+.pt-item b { color: var(--accent); font-weight: 600; }
+
+/* envio de arquivo */
 [data-testid="stFileUploader"] * { background-color: transparent !important; }
 [data-testid="stFileUploader"] [data-testid="stFileUploaderDropzone"] {
-    background: var(--input) !important; border: 1px dashed var(--border) !important; border-radius: 8px !important; }
+    background: var(--surface2) !important; border: 1px dashed var(--border2) !important; border-radius: 10px !important; }
 [data-testid="stFileUploaderDropzone"] * { color: var(--text2) !important; }
-/* texto da caixa de envio quebra linha em vez de cortar com reticências ao redimensionar a barra */
+/* o texto da caixa de envio também quebra linha em vez de ser cortado */
 [data-testid="stFileUploaderDropzone"] { flex-wrap: wrap !important; gap: 8px !important; height: auto !important; }
 [data-testid="stFileUploaderDropzoneInstructions"] { min-width: 0 !important; flex: 1 1 120px !important; }
 [data-testid="stFileUploaderDropzoneInstructions"] * {
     white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
     overflow-wrap: anywhere !important; max-width: 100% !important; }
 [data-testid="stFileUploader"] [data-testid="stFileUploaderFile"] {
-    background: var(--surface) !important; border: 1px solid var(--border) !important;
-    border-radius: 8px !important; padding: 6px 8px !important; }
+    background: var(--surface) !important; border: 1px solid var(--border) !important; border-radius: 8px !important; padding: 6px 8px !important; }
 [data-testid="stFileUploaderFile"] * { color: var(--text) !important; }
-[data-testid="stFileUploaderFile"] small { color: var(--muted) !important; }
-[data-testid="stFileUploaderFile"] svg { color: var(--muted) !important; }
+[data-testid="stFileUploaderFile"] small, [data-testid="stFileUploaderFile"] svg { color: var(--muted) !important; }
 [data-testid="stFileUploader"] button { background: var(--surface) !important; color: var(--text2) !important;
-    border: 1px solid var(--border) !important; border-radius: 6px !important; box-shadow: none !important; }
+    border: 1px solid var(--border) !important; border-radius: 8px !important; box-shadow: none !important; }
 [data-testid="stFileUploader"] button:hover { border-color: var(--accent) !important; color: var(--accent) !important; }
 [data-testid="stFileUploaderDeleteBtn"] button { border: none !important; background: transparent !important; }
 [data-testid="stFileUploaderDeleteBtn"] button:hover { color: var(--danger) !important; }
 
-/* avisos (preenchimento inválido, sem dados): vermelho clarinho */
-[data-testid="stAlert"] > div, [data-testid="stAlert"] [data-baseweb="notification"] {
+/* avisos: erro em vermelho, alerta em ouro, informação em verde */
+[data-testid="stAlert"] > div, [data-testid="stAlert"] [data-baseweb="notification"], [data-testid="stAlertContainer"] {
     background: var(--danger_bg) !important; border: 1px solid var(--danger) !important;
-    border-radius: 8px !important; box-shadow: none !important; }
-[data-testid="stAlert"] [data-testid="stAlertContainer"] { background: transparent !important; border: none !important; }
-[data-testid="stAlert"] p, [data-testid="stAlert"] svg,
-[data-testid="stAlert"] [data-testid="stIconMaterial"] { color: var(--danger) !important; fill: var(--danger) !important; }
+    border-radius: 10px !important; box-shadow: none !important; }
+[data-testid="stAlert"] p, [data-testid="stAlert"] svg, [data-testid="stAlert"] [data-testid="stIconMaterial"],
+[data-testid="stAlert"] [data-testid="stAlertDynamicIcon"] { color: var(--danger) !important; fill: var(--danger) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentInfo"]) [data-testid="stAlertContainer"] {
+    background: var(--info_bg) !important; border-color: var(--border2) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentInfo"]) * { color: var(--info) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) [data-testid="stAlertContainer"] {
+    background: var(--warn_bg) !important; border-color: var(--gold) !important; }
+[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) * { color: var(--warn) !important; }
 
-/* alça visual de redimensionamento na borda direita da barra lateral */
+/* pontinhos na borda da barra lateral, indicando que dá para arrastar */
 section[data-testid="stSidebar"]::after {
     content: ""; position: absolute; top: 50%; right: 3px; transform: translateY(-50%);
     width: 8px; height: 44px; border-radius: 4px; pointer-events: none; z-index: 1000;
-    background-image: radial-gradient(circle, var(--muted) 1.3px, transparent 1.7px);
-    background-size: 4px 6px;
-}
-.resize-hint { font-size: .74rem; color: var(--muted); margin-top: 28px; padding-top: 10px;
-               border-top: 1px solid var(--border); }
+    background-image: radial-gradient(circle, var(--muted) 1.3px, transparent 1.7px); background-size: 4px 6px; }
+.resize-hint { font-size: .72rem; color: var(--muted); margin-top: 28px; padding-top: 12px; border-top: 1px solid var(--border); }
 
-.side-brand { font-size: .95rem; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-.sec { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted);
-       font-weight: 600; margin: 20px 0 6px; }
-.sec-sub { font-size: .76rem; color: var(--text2); font-weight: 500; margin: 6px 0 2px; }
-
-.app-header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px;
-              padding-bottom: 14px; border-bottom: 1px solid var(--border); margin-bottom: 16px; flex-wrap: wrap;
-              position: relative; }
-/* identidade: traço verde + ouro sob o cabeçalho */
-.app-header::after { content: ""; position: absolute; left: 0; bottom: -2px; width: 64px; height: 3px;
-                     border-radius: 2px; background: linear-gradient(90deg, var(--accent) 0 60%, var(--gold) 60% 100%); }
-.eyebrow { color: var(--accent) !important; }
-.app-header h1 { font-size: 1.45rem; font-weight: 600; letter-spacing: -0.01em; color: var(--text);
-                 margin: 2px 0; padding: 0; }
-.eyebrow { font-size: .7rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
-.sub { font-size: .88rem; color: var(--text2); margin: 0; }
-.chips { display: flex; gap: 6px; flex-wrap: wrap; }
-.chip { font-size: .76rem; color: var(--text2); background: var(--surface); border: 1px solid var(--border);
-        border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
-
-[data-testid="stMetric"] { background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
-                           padding: 12px 16px; height: 100%; }
-[data-testid="stMetricLabel"] p { font-size: .76rem; color: var(--muted) !important; font-weight: 500; }
-[data-testid="stMetricValue"] { font-size: 1.3rem; font-weight: 600; color: var(--text); font-feature-settings: "tnum"; }
-/* selo de variação: formato de pílula; a cor é definida pelo sinal no bloco dos indicadores */
-[data-testid="stMetricDelta"] { border-radius: 999px; padding: 1px 8px; width: fit-content; }
-/* esconde o ícone do Streamlit (aparecia como quadrado); a seta vai no próprio texto */
-[data-testid="stMetricDelta"] svg,
-[data-testid="stMetricDelta"] [data-testid="stIconMaterial"],
-[data-testid="stMetricDelta"] [data-testid^="stMetricDeltaIcon"] { display: none !important; }
-
-iframe[title="streamlit_folium.st_folium"] { border: 1px solid var(--border); border-radius: 8px; }
-
-.legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 8px 2px 4px;
-          font-size: .78rem; color: var(--text2); }
-.legend-title { font-weight: 600; color: var(--text); }
-.legend-scale { display: flex; align-items: center; gap: 8px; }
-.legend-bar { width: 180px; height: 8px; border-radius: 2px; }
+/* ============ mapa e legenda ============ */
+iframe[title="streamlit_folium.st_folium"] { border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); }
+.legend { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; padding: 10px 14px; margin-top: 8px;
+          background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+          font-size: .76rem; color: var(--text2); }
+.legend-title { font-weight: 600; color: var(--text); font-size: .74rem; letter-spacing: .05em; text-transform: uppercase; }
+.legend-scale { display: flex; align-items: center; gap: 8px; font-family: var(--mono); font-size: .7rem; }
+.legend-bar { width: 200px; height: 8px; border-radius: 4px; }
 .legend-note { color: var(--muted); }
-.legend-swatch { display: inline-block; width: 14px; height: 10px; border-radius: 2px;
-                 background: var(--mask); opacity: .7; vertical-align: middle; margin-right: 6px;
-                 border: 1px solid var(--border); }
+.legend-swatch { display: inline-block; width: 14px; height: 10px; border-radius: 3px; background: var(--mask);
+                 opacity: .7; vertical-align: middle; margin-right: 6px; border: 1px solid var(--border); }
 
+/* ============ abas ============ */
+.stTabs [data-baseweb="tab-list"], [data-testid="stTabs"] [role="tablist"] {
+    gap: 2px; border-bottom: 1px solid var(--border); background: transparent; }
+.stTabs [data-baseweb="tab"], [data-testid="stTab"] { padding: 9px 14px !important; border-radius: 8px 8px 0 0; transition: background .15s; }
+[data-testid="stTab"]:hover { background: var(--hover); }
+.stTabs [data-baseweb="tab"] p, [data-testid="stTab"] p { font-size: .84rem; font-weight: 500; color: var(--muted) !important; }
+.stTabs [aria-selected="true"] p, [data-testid="stTab"][aria-selected="true"] p { color: var(--text) !important; font-weight: 600; }
+[data-testid="stTab"][aria-selected="true"] { box-shadow: inset 0 -2px 0 var(--gold); }
+[data-testid="stTab"] > div:not([data-testid]) { display: none !important; }      /* esconde o sublinhado vermelho padrão */
+.stTabs [data-baseweb="tab-highlight"] { background: var(--gold) !important; height: 2px; }
+.stTabs [data-baseweb="tab-border"] { background: var(--border); }
+[data-testid="stTabPanel"] { padding-top: 14px; }
 .comp-title { font-size: .95rem; font-weight: 600; color: var(--text); margin: 4px 0 0; }
 
-.stTabs [data-baseweb="tab-list"] { gap: 2px; border-bottom: 1px solid var(--border); }
-.stTabs [data-baseweb="tab"] { padding: 8px 14px; }
-.stTabs [data-baseweb="tab"] p { font-size: .86rem; font-weight: 500; color: var(--muted); }
-.stTabs [aria-selected="true"] p { color: var(--text); }
-.stTabs [data-baseweb="tab-highlight"] { background: var(--gold); height: 3px; }
-.stTabs [aria-selected="true"] p { color: var(--accent) !important; font-weight: 600; }
-.stTabs [data-baseweb="tab-border"] { background: var(--border); }
+/* gráficos em cartões */
+[data-testid="stPlotlyChart"] { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+                                padding: 6px 6px 0; box-shadow: var(--shadow); }
+[data-testid="stDataFrame"] { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+[data-testid="stRadio"] [data-testid="stRadioGroup"] { gap: 6px; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -1423,50 +1503,62 @@ ICO_RECT = ("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' vie
             "<rect x='4' y='6' width='16' height='12' fill='%233388ff' fill-opacity='.18' stroke='%23374151' "
             "stroke-width='1.8' stroke-dasharray='3 2'/><g fill='%23ffffff' stroke='%23374151' stroke-width='1.5'>"
             "<circle cx='4' cy='6' r='1.9'/><circle cx='20' cy='18' r='1.9'/></g></svg>")
+# ícones de desenho com as cores do tema
+_ic = lambda svg: svg.replace("%23374151", "%23" + P["text2"][1:]).replace("%23ffffff", "%23" + P["surface"][1:])
 MAP_CSS = f"""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-.leaflet-container {{ font-family: 'Inter', system-ui, sans-serif; background: {P['leaflet_bg']}; }}
-.leaflet-bar {{ border: 1px solid #D1D5DB !important; box-shadow: none !important; border-radius: 6px !important; overflow: hidden; }}
-.leaflet-bar a {{ color: #374151 !important; border-bottom: 1px solid #E5E7EB !important; }}
-.leaflet-bar a:hover {{ background: #F9FAFB !important; }}
-.leaflet-control-layers {{ border: 1px solid #D1D5DB !important; box-shadow: none !important; border-radius: 6px !important;
-                          font-size: 12px; color: #374151; }}
+@import url('https://fonts.googleapis.com/css2?family={FONTE_URL}&display=swap');
+.leaflet-container {{ font-family: '{FONTE}', system-ui, sans-serif; background: {P['leaflet_bg']}; }}
+.leaflet-bar {{ border: 1px solid {P['border']} !important; box-shadow: 0 2px 8px rgba(0,0,0,.12) !important;
+               border-radius: 8px !important; overflow: hidden; }}
+.leaflet-bar a {{ color: {P['text2']} !important; background-color: {P['surface']} !important;
+                 border-bottom: 1px solid {P['border']} !important; }}
+.leaflet-bar a:hover {{ background-color: {P['hover']} !important; color: {P['accent']} !important; }}
+.leaflet-control-layers {{ border: 1px solid {P['border']} !important; box-shadow: 0 2px 8px rgba(0,0,0,.12) !important;
+                          border-radius: 8px !important; font-size: 12px; color: {P['text2']};
+                          background: {P['surface']} !important; }}
+.leaflet-control-layers-toggle {{ background-color: {P['surface']} !important; }}
 .leaflet-control-layers-expanded {{ padding: 8px 12px; }}
-.leaflet-control-layers-separator {{ border-top: 1px solid #E5E7EB; }}
-.leaflet-control-scale-line {{ border-color: #6B7280; color: #374151; background: rgba(255,255,255,.85); font-size: 11px; }}
-.leaflet-control-attribution {{ font-size: 10px; background: rgba(255,255,255,.75) !important; }}
-.leaflet-draw-tooltip {{ font-family: 'Inter', sans-serif; font-size: 11px; }}
+.leaflet-control-layers-separator {{ border-top: 1px solid {P['border']}; }}
+/* escala do mapa sempre branca, legível sobre qualquer camada */
+.leaflet-control-scale-line {{ border-color: #6B7280; color: #374151; background: rgba(255,255,255,.88);
+                              font-size: 10px; }}
+.leaflet-control-attribution {{ font-size: 10px; background: {P['surface']}bf !important; color: {P['muted']} !important; }}
+.leaflet-control-attribution a {{ color: {P['text2']} !important; }}
+.leaflet-tooltip {{ background: {P['surface']}; color: {P['text']}; border: 1px solid {P['border']};
+                   border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,.15); font-size: 12px; }}
+.leaflet-draw-tooltip {{ font-family: '{FONTE}', sans-serif; font-size: 11px; }}
 /* vértices como pontos pequenos em vez de quadrados grandes */
 .leaflet-editing-icon, .leaflet-touch .leaflet-editing-icon {{
     width: 10px !important; height: 10px !important;
     margin-left: -5px !important; margin-top: -5px !important;
     border-radius: 50% !important; border: 2px solid #3388ff !important;
     background: #ffffff !important; box-shadow: none !important; }}
-.leaflet-draw-actions a {{ font-family: 'Inter', sans-serif; font-size: 12px; }}
-/* ferramentas de desenho: ícone + rótulo dentro do mesmo botão */
+.leaflet-draw-actions a {{ font-family: '{FONTE}', sans-serif; font-size: 12px; background: {P['surface']} !important;
+                          color: {P['text2']} !important; }}
+/* ferramentas de desenho com ícone e texto no mesmo botão */
 .leaflet-draw-toolbar a.leaflet-draw-draw-polygon,
 .leaflet-draw-toolbar a.leaflet-draw-draw-rectangle {{
     width: auto !important; min-width: 30px; display: flex !important; align-items: center;
     padding: 0 10px 0 32px !important; white-space: nowrap; text-decoration: none;
     background-position: 7px center !important; background-size: 18px 18px !important;
-    background-repeat: no-repeat !important; background-color: #ffffff; }}
-.leaflet-draw-toolbar a.leaflet-draw-draw-polygon {{ background-image: url("{ICO_POLY}") !important; }}
-.leaflet-draw-toolbar a.leaflet-draw-draw-rectangle {{ background-image: url("{ICO_RECT}") !important; }}
+    background-repeat: no-repeat !important; background-color: {P['surface']}; }}
+.leaflet-draw-toolbar a.leaflet-draw-draw-polygon {{ background-image: url("{_ic(ICO_POLY)}") !important; }}
+.leaflet-draw-toolbar a.leaflet-draw-draw-rectangle {{ background-image: url("{_ic(ICO_RECT)}") !important; }}
 .leaflet-draw-toolbar a.leaflet-draw-draw-polygon::after,
 .leaflet-draw-toolbar a.leaflet-draw-draw-rectangle::after {{
-    font-family: 'Inter', sans-serif; font-size: 12px; font-weight: 500; color: #374151; }}
+    font-family: '{FONTE}', sans-serif; font-size: 12px; font-weight: 500; color: {P['text2']}; }}
 .leaflet-draw-toolbar a.leaflet-draw-draw-polygon::after {{ content: "{DRAW_TXT[lang]['lbl_poly']}"; }}
 .leaflet-draw-toolbar a.leaflet-draw-draw-rectangle::after {{ content: "{DRAW_TXT[lang]['lbl_rect']}"; }}
-.leaflet-draw-toolbar a.leaflet-draw-toolbar-button-enabled {{ background-color: #EAF2FF !important; }}
-.leaflet-draw-toolbar a.leaflet-draw-toolbar-button-enabled::after {{ color: #1D4ED8; }}
-/* botões Cancelar/Concluir aparecem à direita da barra (agora mais larga) */
+.leaflet-draw-toolbar a.leaflet-draw-toolbar-button-enabled {{ background-color: {P['accent_bg']} !important; }}
+.leaflet-draw-toolbar a.leaflet-draw-toolbar-button-enabled::after {{ color: {P['accent']}; }}
+/* Cancelar e Concluir aparecem à direita da barra de desenho */
 .leaflet-draw-actions, .leaflet-touch .leaflet-draw-actions {{ left: calc(100% + 6px) !important; }}
-/* [remover área] botão ✕ e modo remover */
+/* botão ✕ e modo de remoção */
 .rm-ctl a.rm-btn {{ font-size: 14px; font-weight: 700; text-decoration: none; }}
-.rm-ctl a.rm-btn.ativo {{ background: #FDECEA !important; color: #B42318 !important; }}
-.rm-ctl.vazio a.rm-btn {{ color: #C0C4CA !important; cursor: not-allowed; }}
-.rm-ctl.vazio a.rm-btn:hover {{ background: #ffffff !important; }}
+.rm-ctl a.rm-btn.ativo {{ background: {P['danger_bg']} !important; color: {P['danger']} !important; }}
+.rm-ctl.vazio a.rm-btn {{ color: {P['border2']} !important; cursor: not-allowed; }}
+.rm-ctl.vazio a.rm-btn:hover {{ background: {P['surface']} !important; }}
 .leaflet-container.modo-rm {{ cursor: crosshair; }}
 </style>
 """
@@ -1474,18 +1566,19 @@ MAP_CSS = f"""
 PLOT_CFG = {"displaylogo": False, "toImageButtonOptions": {"format": "png", "scale": 2}}
 
 def estilo(fig, altura=380, grade=True):
-    fig.update_layout(height=altura, margin=dict(l=64, r=24, t=40, b=56),
+    fig.update_layout(height=altura, margin=dict(l=64, r=24, t=36, b=52),
                       paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-                      font=dict(family="Inter, system-ui, sans-serif", size=12, color=P["text2"]),
+                      font=dict(family=f"{FONTE}, system-ui, sans-serif", size=12, color=P["text2"]),
                       legend=dict(orientation="h", yanchor="bottom", y=1.02, x=0, title=None,
                                   font=dict(color=P["text2"])),
                       hoverlabel=dict(bgcolor=P["surface"], bordercolor=P["border"],
-                                      font=dict(family="Inter, system-ui, sans-serif", color=P["text"])),
+                                      font=dict(family=f"{FONTE}, system-ui, sans-serif", color=P["text"])),
                       modebar=dict(bgcolor="rgba(0,0,0,0)", color=P["muted"], activecolor=P["text"]),
                       coloraxis_colorbar=dict(tickfont=dict(color=P["text2"]),
                                               title=dict(side="right", font=dict(color=P["text2"]))))
-    eixo = dict(showgrid=grade, gridcolor=P["grid"], linecolor=P["border"], zeroline=False,
-                tickfont=dict(color=P["text2"]), title_font=dict(color=P["text2"]),
+    eixo = dict(showgrid=grade, gridcolor=P["grid"], griddash="dot", linecolor=P["border"], zeroline=False,
+                tickfont=dict(color=P["muted"], size=11),
+                title_font=dict(color=P["text2"], size=12),
                 automargin=True, title_standoff=12, ticks="outside", ticklen=4, tickcolor=P["border"])
     fig.update_xaxes(**eixo)
     fig.update_yaxes(**eixo)
@@ -1503,27 +1596,31 @@ area_txt = (T["area_br"] if not areas else
             T["area_lbl"].format(a=", ".join(nomes_areas)) if len(areas) <= 3 else
             T["area_n_lbl"].format(n=len(areas)))
 
-# [alertas] cada área de interesse é monitorada separadamente: (nome, wkt)
+# cada área de interesse é monitorada separadamente
 alert_areas = [(n, g.wkt) for n, g in areas] if alertas_on else []
 chip_al = f'<span class="chip">{T["al_chip"].format(n=len(alert_areas))}</span>' if alert_areas else ""
 
-st.markdown(f"""
-<div class="app-header">
-  <div>
-    <div class="eyebrow">{T["eyebrow"]}</div>
-    <h1>{T["titulo"]}</h1>
-    <p class="sub">{T["sub"]}</p>
-  </div>
-  <div class="chips">
-    <span class="chip">{T["dados_ate"]} {ULT.day} {MESES[ULT.month - 1]}/{ULT.year}</span>
-    <span class="chip">{area_txt}</span>
-    <span class="chip">{T["periodo"]}: {fmt_ts(INI)} – {fmt_ts(FIM)}</span>
-    {chip_al}
-  </div>
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    '<div class="app-header">'
+    '<div class="brand">'
+    f'<div class="brand-mark">{LOGO}</div>'
+    '<div class="brand-txt">'
+    f'<div class="eyebrow">{T["eyebrow"]}</div>'
+    f'<h1>{T["titulo"]}</h1>'
+    f'<p class="sub">{T["sub"]}</p>'
+    '</div></div>'
+    '<div class="chips">'
+    f'<span class="chip chip-live"><i></i>{T["dados_ate"]} <b>{ULT.day} {MESES[ULT.month - 1]}/{ULT.year}</b></span>'
+    f'<span class="chip">{area_txt}</span>'
+    f'<span class="chip">{T["periodo"]}: <b>{fmt_ts(INI)} – {fmt_ts(FIM)}</b></span>'
+    f'{chip_al}'
+    '</div></div>', unsafe_allow_html=True)
 
-kpi_box = st.container()          # preenchido depois do mapa
+# mapa à esquerda e indicadores à direita, para ver os dois sem rolar a página
+col_mapa, col_kpi = st.columns([2.5, 1], gap="medium")
+col_mapa.markdown(sec_head("01", T["sec_map"]), unsafe_allow_html=True)
+col_kpi.markdown(sec_head("02", T["sec_overview"]), unsafe_allow_html=True)
+kpi_box = col_kpi.container()     # preenchido depois do mapa
 
 # ---------------- mapa (restrito à América do Sul)
 m = folium.Map(location=[-15, -55], zoom_start=4, tiles=None, control_scale=True,
@@ -1541,8 +1638,8 @@ if fora_br is not None:
                    style_function=lambda f: {"fill": False, "color": P["muted"], "weight": 1}).add_to(m)
 
 tem_raster = False
-sel_layers = []                                      # [remover área] uma camada por área
-# [várias áreas] uma imagem por área, com a mesma escala de cor para todas
+sel_layers = []
+# uma imagem por área, todas na mesma escala de cor
 if areas:
     with st.spinner(T["gerando"]):
         rs = [raster(g.wkt, INI.strftime("%Y-%m-%d"), FIM_EXCL.strftime("%Y-%m-%d"), N_MESES) for _, g in areas]
@@ -1554,7 +1651,7 @@ if areas:
                                               origin="lower", pixelated=False, name=T["l_focos"]).add_to(m)
         tem_raster = True
 if areas and not pais:
-    # [remover área] preenchimento invisível para o clique valer na área toda
+    # o preenchimento é invisível, mas faz o clique funcionar na área inteira
     for nome, g in areas:
         lyr = folium.GeoJson(mapping(g), name=f'{T["l_sel"]}: {nome}', tooltip=nome,
                              style_function=lambda f: {"color": P["text"], "weight": 1.5, "fill": True,
@@ -1564,7 +1661,7 @@ if areas and not pais:
     x0, y0, x1, y1 = poly_sel.bounds
     m.fit_bounds([[y0, x0], [y1, x1]])
 
-# pontos da área em construção (coordenadas): bolinhas + linha tracejada até fechar a área
+# pontos da área que está sendo montada por coordenadas, ligados por uma linha tracejada
 if usa.get("coords") and ss.coord_pts:
     pts_ll = list(ss.coord_pts)
     if len(pts_ll) >= 2:
@@ -1583,30 +1680,31 @@ if usa.get("coords") and ss.coord_pts:
 folium.TileLayer(DARK_LABELS if ESCURO else LIGHT_LABELS, attr=LABELS_ATTR, name=T["l_rot"],
                  max_native_zoom=16, max_zoom=19, overlay=True, pane="rotulos", show=False).add_to(m)
 if usa.get("draw"):
-    JsSnippet(draw_i18n_js(lang)).add_to(m)          # textos no idioma escolhido (antes de criar o Draw)
+    JsSnippet(draw_i18n_js(lang)).add_to(m)  # textos no idioma escolhido (precisa vir antes de criar o Draw)
     Draw(export=False, position="topleft",
          draw_options={"polyline": False, "circle": False, "marker": False, "circlemarker": False},
          edit_options={"edit": False, "remove": False}).add_to(m)
-# [remover área] botão ✕ abaixo das ferramentas de desenho (em todos os modos)
+# botão ✕ logo abaixo das ferramentas de desenho
 JsSnippet(rm_ctl_js(m.get_name(), [l.get_name() for l in sel_layers],
                     dict(btn=T["rm_btn"], tip=T["rm_tip"], vazio=T["rm_vazio"],
                          cor=P["danger"], base=P["text"]))).add_to(m)
 folium.LayerControl(position="topright", collapsed=True).add_to(m)
 
-out = st_folium(m, key="mapa", height=600, use_container_width=True,
-                returned_objects=["last_active_drawing", "last_object_clicked"])   # [remover área]
+with col_mapa:
+    out = st_folium(m, key="mapa", height=620, use_container_width=True,
+                    returned_objects=["last_active_drawing", "last_object_clicked"])
 
-# [remover área] sinal de remoção vindo do mapa (clique numa latitude impossível; o índice vem na latitude)
+# remoção pedida pelo ✕ do mapa: a latitude "impossível" diz qual área foi clicada
 clique = (out or {}).get("last_object_clicked")
 if (sel_layers and clique and -90 < clique.get("lat", 0) < RM_LAT + RM_PASSO / 2
         and clique != ss.get("clique_rm")):
-    ss.clique_rm = clique                         # o mapa mantém o último clique; evita repetir
+    ss.clique_rm = clique  # o mapa repete o último clique a cada execução; isso evita remover duas vezes
     i_rm = int(round((RM_LAT - clique["lat"]) / RM_PASSO))
     if 0 <= i_rm < len(refs):
         remover_area(refs[i_rm])
     st.rerun()
 
-# [várias áreas] cada desenho novo vira mais uma área
+# cada desenho novo vira mais uma área
 if usa.get("draw"):
     drawing = (out or {}).get("last_active_drawing")
     if (drawing and drawing.get("geometry") and drawing not in [x["feat"] for x in ss.minhas_areas]
@@ -1614,10 +1712,10 @@ if usa.get("draw"):
         nova_area("draw", None, shape(drawing["geometry"]).wkt, feat=drawing)
         st.rerun()
 
-# legenda (fora do mapa, para não cobrir nada)
+# legenda fora do mapa, para não cobrir nada
 cinza = f'<span class="legend-note"><span class="legend-swatch"></span>{T["fora_cob"]}</span>'
 if tem_raster:
-    st.markdown(f"""
+    col_mapa.markdown(f"""
 <div class="legend">
   <span class="legend-title">{T["leg_titulo"]}</span>
   <span class="legend-scale"><span>{T["menor"]}</span>
@@ -1627,7 +1725,7 @@ if tem_raster:
   {cinza}
 </div>""", unsafe_allow_html=True)
 elif poly_sel is None:
-    st.markdown(f'<div class="legend"><span class="legend-note">{T["sel_hint"]}</span>{cinza}</div>',
+    col_mapa.markdown(f'<div class="legend"><span class="legend-note">{T["sel_hint"]}</span>{cinza}</div>',
                 unsafe_allow_html=True)
 
 poly = poly_sel if poly_sel is not None else (BR_SHAPE if BR_SHAPE is not None else box(-74, -34, -34, 6))
@@ -1659,21 +1757,21 @@ with st.spinner(T["calculando"]):
 parc = parc.reindex(range(ANO_BASE, ULT.year + 1), fill_value=0)
 JANELA = f"1–{ULT.day} {MESES[ULT.month - 1]}"
 
-# ---------------- indicadores (acima do mapa)
+# ---------------- indicadores (coluna da direita)
 with kpi_box:
     v_atual = parc.get(ULT.year, 0)
     base = parc[parc.index < ULT.year]
     m_base = base.median() if len(base) else np.nan
     delta = (v_atual / m_base - 1) * 100 if m_base else np.nan
 
-    # cor do selo pelo sinal: acima da mediana = vermelho claro; abaixo = verde claro
+    # cor do selo: vermelho quando está acima da mediana, verde quando está abaixo
     if pd.notna(delta) and delta != 0:
         fg, bg = ("var(--danger)", "var(--danger_bg)") if delta > 0 else ("var(--success)", "var(--success_bg)")
         st.markdown(f"""<style>[data-testid="stMetricDelta"] {{ color: {fg} !important; background: {bg} !important; }}
                     [data-testid="stMetricDelta"] * {{ color: {fg} !important; }}</style>""",
                     unsafe_allow_html=True)
 
-    k0, k1, k2, k3, k4 = st.columns(5)
+    k0 = k1 = k2 = k3 = k4 = st  # um indicador por linha
     k0.metric(T["kpi_total"], f"{mon.H.sum():,.0f}", help=T["h_total"])
     if pd.notna(delta):
         seta = "↑" if delta > 0 else ("↓" if delta < 0 else "→")
@@ -1683,7 +1781,7 @@ with kpi_box:
     k1.metric(f"{JANELA}/{ULT.year} {T['kpi_vs']}", f"{v_atual:,.0f} {T['focos']}",
               delta_txt, delta_color="off", help=T["h_vs"])
     k2.metric(T["kpi_ano"], int(cal.sum(axis=1).idxmax()), help=T["h_ano"])
-    tp = temporada(med)                                                        # [temporada]
+    tp = temporada(med)
     k3.metric(T["kpi_temp"], f"{MESES[tp[0]]}–{MESES[tp[1]]} ({MESES[tp[2]]})" if tp else "—",
               help=T["temp_help"])
     k4.metric(T["kpi_cel"], len(inside), help=T["h_cel"])
@@ -1691,8 +1789,8 @@ with kpi_box:
                                                                a0=ANO_BASE, a1=ULT.year - 1))
 
 # ---------------- análises
-st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
-t1, t2, t3, t4, t5, t6, t7, t8 = st.tabs(T["abas"])
+st.markdown(sec_head("03", T["sec_analysis"]), unsafe_allow_html=True)
+t1, t2, t3, t4, t5, t6 = st.tabs(T["abas"][:6])
 
 with t1:
     fig = px.imshow(cal, color_continuous_scale=PAL, aspect="auto",
@@ -1745,7 +1843,7 @@ with t3:
     fig = go.Figure(go.Bar(x=s.index, y=s.values,
                            marker_color=[P["destaque"] if a == destaque else P["bar"] for a in s.index],
                            hovertemplate="%{x}: %{y:,.0f}<extra></extra>"))
-    # [linhas] mediana e média com cores distintas (Okabe-Ito) e rótulos fora do gráfico, à direita
+    # mediana e média com cores diferentes, e os valores escritos à direita do gráfico
     m_media = s[s.index < destaque].mean()
     COR_MED, COR_MEDIA = "#D55E00", "#009E73"                    # Okabe-Ito: mediana / média
     fig.add_hline(y=m_comp, line_dash="dash", line_color=COR_MED, line_width=1.5)
@@ -1798,8 +1896,8 @@ with t6:
                        use_container_width=True)
     if c3.button(T["dl_prep"], use_container_width=True):
         x0, y0, x1, y1 = poly.bounds
-        # mesma regra da série harmonizada: MODIS antes de abr/2018, VIIRS depois (sem contar o mesmo fogo
-        # duas vezes na sobreposição); harmonized_weight = 1 para VIIRS e k da célula para MODIS
+        # Mesma regra da série harmonizada: MODIS até mar/2018 e VIIRS depois, para o mesmo fogo não
+        # aparecer duas vezes. harmonized_weight vale 1 para VIIRS e o k da célula para MODIS.
         con = duckdb.connect()
         con.register("kt", kt)
         pts = con.execute(f"""
@@ -1822,7 +1920,12 @@ with t6:
         c3.download_button(f"{T['dl_focos']} ({st.session_state.pts_n:,} {T['linhas']})",
                            st.session_state.pts_csv, "focos.csv", use_container_width=True)
     st.caption(T["dl_hint"])
-# ---------------- [tempo real] atualiza sozinho a cada `intervalo` minutos (só esta parte da página)
+# ---------------- monitoramento em tempo real e alertas
+st.markdown(sec_head("04", T["sec_monitor"], T["al_chip"].format(n=len(alert_areas)) if alert_areas else ""),
+            unsafe_allow_html=True)
+t7, t8 = st.tabs(T["abas"][6:])
+
+# a aba Tempo real se atualiza sozinha a cada `intervalo` minutos, sem recarregar o resto da página
 FIRMS_KEY = firms_key()
 with t7:
     if not FIRMS_KEY:
@@ -1832,7 +1935,7 @@ with t7:
             FIRMS_KEY, intervalo, tuple(alert_areas), poly_sel.wkt if poly_sel is not None else None,
             pais)
 
-# ---------------- [alertas] últimos alertas e downloads
+# ---------------- últimos alertas e downloads
 with t8:
     if not alertas_on:
         st.info(T["al_off"], icon=":material/notifications_off:")
@@ -1866,5 +1969,5 @@ with t8:
             if st.button(T["al_limpar_ok"], type="primary", use_container_width=True):
                 if os.path.exists(ALERT_FILE):
                     os.remove(ALERT_FILE)
-                ss.hist = pd.DataFrame(columns=HIST_COLS)    # focos já vistos continuam marcados (sem re-alertar)
+                ss.hist = pd.DataFrame(columns=HIST_COLS)  # os focos já vistos continuam marcados, para não gerar alertas repetidos
                 st.rerun()
