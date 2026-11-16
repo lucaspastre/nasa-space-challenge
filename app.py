@@ -549,8 +549,7 @@ class JsSnippet(MacroElement):
         super().__init__()
         self._template = Template("{% macro script(this, kwargs) %}" + js + "{% endmacro %}")
 
-st.set_page_config(page_title="Flama", page_icon="🔥",
-                   layout="wide", initial_sidebar_state="expanded")
+st.set_page_config(page_title="Flama", page_icon="assets/fire.png" if os.path.exists("assets/fire.png") else "🔥")
 
 # ---------------- dados
 @st.cache_data
