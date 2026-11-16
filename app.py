@@ -748,7 +748,7 @@ def painel_tempo_real(key, intervalo, areas, foco_wkt, pais):
         x0, y0, x1, y1 = foco.bounds
         centro = dict(lat=(y0 + y1) / 2, lon=(x0 + x1) / 2)
         zoom = float(np.clip(np.log2(360 / max(x1 - x0, y1 - y0, 0.05)) - 1.3, 3, 13))
-    fig.update_layout(**{chave_mapa: dict(style="carto-darkmatter" if ESCURO else "carto-positron",
+        fig.update_layout(**{chave_mapa: dict(style="open-street-map",
                                           center=centro, zoom=zoom)},
                       height=540, margin=dict(l=0, r=0, t=0, b=0), paper_bgcolor="rgba(0,0,0,0)",
                       uirevision=foco_wkt[:200] if not pais else "pais",
